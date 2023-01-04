@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+
+# Build results
+target/
+build/
+
+# IDEs
+.vscode/
+.idea/
+*.iml
+
+# env
+.env
+
+# nodejs
+node_modules
+
