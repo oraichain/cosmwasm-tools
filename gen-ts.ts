@@ -88,12 +88,13 @@ const fixNestedReactQuery = async (
   Object.entries(nestedResponses).forEach(([key, [name, inputType]]) => {
     clientData = clientData
       .replace(
-        `export interface Oraiswap${inputType}<TData> extends ${clientName}ReactQuery<${key}, TData> {}`,
-        `export interface Oraiswap${inputType}<TData> extends ${clientName}ReactQuery<${key}, TData> {input: ${inputType}}`
+        `${inputType}<TData> extends ${clientName}ReactQuery<${key}, TData> {}`,
+        `${inputType}<TData> extends ${clientName}ReactQuery<${key}, TData> {input: ${inputType}}`
       )
+      // use regular for dynamic replacement
       .replace(
-        `\n}: Oraiswap${inputType}<TData>) {`,
-        `,\n\tinput\n}: Oraiswap${inputType}<TData>) {`
+        new RegExp(`\\n\\}:\\s*([\\w_\\d]+${inputType})<TData>`),
+        `,\n\tinput\n}: $1<TData>`
       )
       .replace(`client.${name}()`, `client.${name}(input)`);
   });
