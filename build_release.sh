@@ -45,6 +45,8 @@ if [ "$build_release" == 'true' ]; then
             brew install binaryen
         fi 
     fi 
+    # rm old file to clear cache when displaying size
+    rm -f "artifacts/$name.wasm"
     wasm-opt -Os "$basedir/target/wasm32-unknown-unknown/release/$build_name.wasm" -o "artifacts/$name.wasm"
 else
     $CARGO build -q --target-dir "$basedir/target" --target wasm32-unknown-unknown
