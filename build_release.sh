@@ -64,6 +64,6 @@ if [ "$build_schema" == 'true' ]; then
 fi
 
 # show content
-du -h "$basedir/$contractdir/artifacts/$name.wasm"
+du -h "$contractdir/artifacts/$name.wasm"
 
 echo "done"
