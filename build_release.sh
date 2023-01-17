@@ -64,6 +64,11 @@ if [ "$build_schema" == 'true' ]; then
 fi
 
 # show content
-du -h "$contractdir/artifacts/$name.wasm"
+if [[ "${contractdir:0:1}" == / || "${contractdir:0:2}" == ~[/a-zA-Z] ]] then 
+    du -h "$contractdir/artifacts/$name.wasm"
+else 
+    du -h $(realpath "$basedir/$contractdir/artifacts/$name.wasm")
+fi 
+
 
 echo "done"
