@@ -1,10 +1,10 @@
-import "dotenv/config";
-import { Contract } from ".";
+import 'dotenv/config';
+import { Contract } from '.';
 
-Contract.init().then(async () => {
-  const tokenClient = Contract.token(process.env.KWT_CONTRACT);
-
-  const accounts = await tokenClient.allAccounts({ limit: 10 });
+Contract.init(process.env.MNEMONIC).then(async () => {
+  const tokenClient = Contract.token(process.env.AIRI_CONTRACT);
+  console.log(Contract.sender);
+  const accounts = await tokenClient.allAccounts({ limit: 100 });
 
   console.log(accounts);
 });
