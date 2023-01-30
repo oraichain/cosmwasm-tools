@@ -1,4 +1,4 @@
-import { DirectSecp256k1HdWallet } from '@cosmjs/proto-signing';
+import { OfflineSigner } from '@cosmjs/proto-signing';
 import {
   SigningCosmWasmClient,
   CosmWasmClient
@@ -74,17 +74,14 @@ export class Contract {
     return this.getContract('token', contractAddress);
   }
 
-  static async init(mnemonic?: string) {
+  static async init(signer?: OfflineSigner) {
     // update client and sender for submitting transaction
-    if (mnemonic) {
-      const wallet = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, {
-        prefix: process.env.PREFIX
-      });
-      const [firstAccount] = await wallet.getAccounts();
+    if (signer) {
+      const [firstAccount] = await signer.getAccounts();
       this.sender = firstAccount.address;
       this._client = await SigningCosmWasmClient.connectWithSigner(
         process.env.RPC_URL,
-        wallet
+        signer
       );
     } else {
       this._client = await CosmWasmClient.connect(process.env.RPC_URL);

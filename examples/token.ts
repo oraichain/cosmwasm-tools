@@ -1,10 +1,19 @@
 import 'dotenv/config';
+import { DirectSecp256k1HdWallet } from '@cosmjs/proto-signing';
 import { Contract } from '.';
 
-Contract.init(process.env.MNEMONIC).then(async () => {
+(async () => {
+  const wallet = await DirectSecp256k1HdWallet.fromMnemonic(
+    process.env.MNEMONIC,
+    {
+      prefix: process.env.PREFIX
+    }
+  );
+  // init with signer
+  await Contract.init(wallet);
   const tokenClient = Contract.token(process.env.AIRI_CONTRACT);
   console.log(Contract.sender);
-  const accounts = await tokenClient.allAccounts({ limit: 100 });
+  const balance = await tokenClient.balance({ address: Contract.sender });
 
-  console.log(accounts);
-});
+  console.log(balance);
+})();
