@@ -243,15 +243,21 @@ const fixTs = async (outPath, enabledReactQuery = false) => {
 };
 
 const buildSchema = async (packagePath: string) => {
-  if (!existsSync(join(packagePath, 'src', 'bin'))) return;
   const artifactsFolder = join(packagePath, 'artifacts');
   if (!existsSync(artifactsFolder)) await mkdir(artifactsFolder);
+  let bin = 'example';
+  let cwd = packagePath;
+  // check if is new schema build
+  if (existsSync(join(packagePath, 'src', 'bin'))) {
+    bin = 'bin';
+    cwd = artifactsFolder;
+  }
 
   const ret = await new Promise((resolve, reject) =>
     exec(
-      `cargo run -q --bin schema`,
+      `cargo run -q --${bin} schema`,
       {
-        cwd: artifactsFolder
+        cwd
       },
       (err, stdout, stderr) => {
         if (err) return reject(err);
@@ -268,12 +274,12 @@ const fixNestedSchema = async (packagePath: string, update: boolean) => {
     .toString()
     .match(/name\s*=\s*"(.*?)"/);
   if (!cargoMatched) return;
-  const schemaFile = join(
-    packagePath,
-    'artifacts',
-    'schema',
-    cargoMatched[1] + '.json'
-  );
+  const schemaPath = join(packagePath, 'artifacts', 'schema');
+  const schemaFile = join(schemaPath, cargoMatched[1] + '.json');
+  // fallback to old version
+  if (!existsSync(schemaFile)) {
+    return;
+  }
 
   const schemaJSON = JSON.parse((await readFile(schemaFile)).toString());
   if (!schemaJSON.query.anyOf) return;
@@ -306,7 +312,7 @@ const fixNestedSchema = async (packagePath: string, update: boolean) => {
   return responses;
 };
 
-let forcePackagesStr = '';
+let forceRebuild = false;
 let enabledReactQuery = false;
 let contractsFolder = _resolve(__dirname, 'contracts');
 let tsFolder = _resolve(__dirname, 'build');
@@ -315,7 +321,7 @@ for (let i = 2; i < process.argv.length; ++i) {
   const arg = process.argv[i];
   switch (arg) {
     case '--force':
-      forcePackagesStr = process.argv[i + 1];
+      forceRebuild = true;
       break;
     case '--react-query':
       enabledReactQuery = true;
@@ -338,15 +344,9 @@ const nestedMap: {
     .map((dir) => _resolve(contractsFolder, dir))
     .filter((packagePath) => existsSync(join(packagePath, 'Cargo.toml')));
 
-  if (forcePackagesStr) {
-    // run custom packages or all
-    const forcePackages =
-      forcePackagesStr && !forcePackagesStr.startsWith('--')
-        ? forcePackagesStr.split(/\s*,\s*/)
-        : packages;
-
+  if (forceRebuild) {
     // can not run cargo in parallel
-    for (const packagePath of forcePackages) {
+    for (const packagePath of packages) {
       await buildSchema(packagePath);
     }
   }
@@ -357,7 +357,7 @@ const nestedMap: {
       const schemaDir = join(packagePath, 'artifacts', 'schema');
       if (!existsSync(schemaDir)) return false;
       // try fix nested schema if has
-      const responses = await fixNestedSchema(packagePath, !!forcePackagesStr);
+      const responses = await fixNestedSchema(packagePath, forceRebuild);
       if (responses) {
         nestedMap[
           packagePath
