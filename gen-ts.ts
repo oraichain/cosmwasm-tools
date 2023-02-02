@@ -1,4 +1,4 @@
-import codegen from '@cosmwasm/ts-codegen';
+import codegen, { ContractFile } from '@cosmwasm/ts-codegen';
 import { exec } from 'child_process';
 import { join, basename, resolve as _resolve } from 'path';
 import * as fs from 'fs';
@@ -9,7 +9,11 @@ const {
   promises: { readdir, readFile, writeFile, rm, mkdir }
 } = fs;
 
-const genTS = async (contracts, outPath, enabledReactQuery = false) => {
+const genTS = async (
+  contracts: Array<ContractFile>,
+  outPath: string,
+  enabledReactQuery: boolean = false
+) => {
   await rm(outPath, { recursive: true, force: true });
   await codegen({
     contracts,
@@ -373,6 +377,10 @@ const nestedMap: {
       };
     })
   );
-  await genTS(contracts.filter(Boolean), tsFolder, enabledReactQuery);
+  await genTS(
+    contracts.filter(Boolean) as ContractFile[],
+    tsFolder,
+    enabledReactQuery
+  );
   await fixTs(tsFolder, enabledReactQuery);
 })();
