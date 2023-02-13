@@ -320,38 +320,42 @@ const fixNestedSchema = async (packagePath: string, update: boolean) => {
 
 let forceRebuild = false;
 let enabledReactQuery = false;
-let contractsFolder = _resolve(__dirname, 'contracts');
 let tsFolder = _resolve(__dirname, 'build');
-
-for (let i = 2; i < process.argv.length; ++i) {
-  const arg = process.argv[i];
-  switch (arg) {
-    case '--force':
-      forceRebuild = true;
-      break;
-    case '--react-query':
-      enabledReactQuery = true;
-      break;
-    case '--input':
-      contractsFolder = process.argv[i + 1];
-      break;
-    case '--output':
-      tsFolder = process.argv[i + 1];
-      break;
-  }
-}
 
 const nestedMap: {
   [key: string]: { [key: string]: [string, string, string[]] };
 } = {};
 
 (async () => {
-  // check is single contract or not
-  const packages = existsSync(join(contractsFolder, 'Cargo.toml'))
-    ? [contractsFolder]
-    : (await readdir(contractsFolder))
-        .map((dir) => _resolve(contractsFolder, dir))
-        .filter((packagePath) => existsSync(join(packagePath, 'Cargo.toml')));
+  const packages: string[] = [];
+
+  for (let i = 2; i < process.argv.length; ++i) {
+    const arg = process.argv[i];
+    switch (arg) {
+      case '--force':
+        forceRebuild = true;
+        break;
+      case '--react-query':
+        enabledReactQuery = true;
+        break;
+      case '--input':
+        const contractsFolder = process.argv[i + 1];
+        // check is single contract or not
+        const newPackages = existsSync(join(contractsFolder, 'Cargo.toml'))
+          ? [contractsFolder]
+          : (await readdir(contractsFolder))
+              .map((dir) => _resolve(contractsFolder, dir))
+              .filter((packagePath) =>
+                existsSync(join(packagePath, 'Cargo.toml'))
+              );
+        // update new packages
+        packages.push(...newPackages);
+        break;
+      case '--output':
+        tsFolder = process.argv[i + 1];
+        break;
+    }
+  }
 
   if (forceRebuild) {
     // can not run cargo in parallel

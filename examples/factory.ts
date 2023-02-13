@@ -1,5 +1,4 @@
-import "dotenv/config";
-import { Contract } from ".";
+import { Contract } from '.';
 
 Contract.init().then(async () => {
   const { pairs } = await Contract.factory.pairs({ limit: 10 });

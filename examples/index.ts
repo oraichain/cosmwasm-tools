@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { OfflineSigner } from '@cosmjs/proto-signing';
 import {
   SigningCosmWasmClient,
