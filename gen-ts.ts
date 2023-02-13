@@ -288,8 +288,10 @@ const fixNestedSchema = async (packagePath: string, update: boolean) => {
   const schemaJSON = JSON.parse((await readFile(schemaFile)).toString());
   if (!schemaJSON.query.anyOf) return;
   const responses = {};
+
   schemaJSON.query.anyOf = schemaJSON.query.anyOf.map((item: any) => {
     const ref = update ? item.$ref : item.properties[item.required[0]].$ref;
+    if (!ref) return item;
     const matched = ref.match(/([A-Z][a-z]+)Query$/)[1];
     const name = matched.toLowerCase();
     const input = ref.split('/').pop();
@@ -344,9 +346,12 @@ const nestedMap: {
 } = {};
 
 (async () => {
-  const packages = (await readdir(contractsFolder))
-    .map((dir) => _resolve(contractsFolder, dir))
-    .filter((packagePath) => existsSync(join(packagePath, 'Cargo.toml')));
+  // check is single contract or not
+  const packages = existsSync(join(contractsFolder, 'Cargo.toml'))
+    ? [contractsFolder]
+    : (await readdir(contractsFolder))
+        .map((dir) => _resolve(contractsFolder, dir))
+        .filter((packagePath) => existsSync(join(packagePath, 'Cargo.toml')));
 
   if (forceRebuild) {
     // can not run cargo in parallel
