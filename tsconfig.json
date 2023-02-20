@@ -5,6 +5,7 @@
         "useDefineForClassFields": false,
         "moduleResolution": "node",
         "isolatedModules": true,
+        "esModuleInterop": true,
         "target": "esnext",
     },
     "include": [

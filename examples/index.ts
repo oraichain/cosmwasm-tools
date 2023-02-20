@@ -26,7 +26,7 @@ type ContractName =
 
 export class Contract {
   public static sender: string = null;
-  private static _client: any = null;
+  private static _client: CosmWasmClient = null;
 
   private static getContract(type: ContractName, address: string): any {
     const key = '_' + type;
@@ -75,15 +75,19 @@ export class Contract {
     return this.getContract('token', contractAddress);
   }
 
-  static async init(signer?: OfflineSigner) {
+  static async init(signerOrClient?: OfflineSigner | CosmWasmClient) {
     // update client and sender for submitting transaction
-    if (signer) {
-      const [firstAccount] = await signer.getAccounts();
-      this.sender = firstAccount.address;
-      this._client = await SigningCosmWasmClient.connectWithSigner(
-        process.env.RPC_URL,
-        signer
-      );
+    if (signerOrClient) {
+      if (signerOrClient instanceof CosmWasmClient) {
+        this._client = signerOrClient;
+      } else {
+        const [firstAccount] = await signerOrClient.getAccounts();
+        this.sender = firstAccount.address;
+        this._client = await SigningCosmWasmClient.connectWithSigner(
+          process.env.RPC_URL,
+          signerOrClient
+        );
+      }
     } else {
       this._client = await CosmWasmClient.connect(process.env.RPC_URL);
     }
