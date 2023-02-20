@@ -4,7 +4,7 @@ import { SimulateCosmWasmClient } from '../examples/simulate';
 import { InstantiateMsg as OraiswapInstantiateMsg } from '../build/OraiswapToken.types';
 import { Contract } from '../examples';
 
-describe('sum module', () => {
+describe('token', () => {
   const senderAddress = 'orai1g4h64yjt0fvzv5v2j8tyfnpe5kmnetejvfgs7g';
   let airiContractAddress = '';
   const client = new SimulateCosmWasmClient({
