@@ -12,7 +12,7 @@ function build(){
     build_name=$(grep -o 'name *=.*' Cargo.toml | awk -F'[="]' '{print $3}')
     build_name=${build_name//-/_}
     
-    CARGO=$([ -f 'Xargo.toml' && $(rustup default) =~ ^nightly.* ] && echo 'xargo' || echo 'cargo')
+    CARGO=$([[ -f 'Xargo.toml' && $(rustup default) =~ ^nightly.* ]] && echo 'xargo' || echo 'cargo')
 
     echo "Building contract in $contractdir"
 
