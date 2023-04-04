@@ -52,12 +52,8 @@ function build(){
         )
     fi
 
-    # show content
-    if [ "${contractdir:0:1}" == / || "${contractdir:0:2}" == ~[/a-zA-Z] ]; then 
-        du -h "$contractdir/artifacts/$name.wasm"
-    else 
-        du -h $(realpath "$contractdir/artifacts/$name.wasm")
-    fi 
+    # show content    
+    du -h "$contractdir/artifacts/$name.wasm"    
 }
 
 contractdirs=()
