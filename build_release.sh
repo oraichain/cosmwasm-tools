@@ -12,7 +12,7 @@ function build(){
     build_name=$(grep -o 'name *=.*' Cargo.toml | awk -F'[="]' '{print $3}')
     build_name=${build_name//-/_}
     
-    CARGO=$([[ -f 'Xargo.toml' && $(rustup default) =~ ^nightly.* ]] && echo 'xargo' || echo 'cargo')
+    CARGO=$([ -f 'Xargo.toml' && $(rustup default) =~ ^nightly.* ] && echo 'xargo' || echo 'cargo')
 
     echo "Building contract in $contractdir"
 
@@ -20,7 +20,10 @@ function build(){
     # Note that shortcuts from .cargo/config are not available in source code packages from crates.io
     mkdir -p artifacts
 
-    if [ "$build_release" == 'true' ]; then
+    if [ "$build_debug" == 'true' ]; then
+        $CARGO build -q --lib --target-dir "$basedir/target" --target wasm32-unknown-unknown
+        cp "$basedir/target/wasm32-unknown-unknown/debug/$build_name.wasm" artifacts        
+    else
         RUSTFLAGS='-C link-arg=-s' $CARGO build -q --release --lib --target-dir "$basedir/target" --target wasm32-unknown-unknown
         # wasm-optimize on all results
         echo "Optimizing $name.wasm"
@@ -37,23 +40,20 @@ function build(){
         # rm old file to clear cache when displaying size
         rm -f "artifacts/$name.wasm"
         wasm-opt -Os "$basedir/target/wasm32-unknown-unknown/release/$build_name.wasm" -o "artifacts/$name.wasm"
-    else
-        $CARGO build -q --target-dir "$basedir/target" --target wasm32-unknown-unknown
-        cp "$basedir/target/wasm32-unknown-unknown/debug/$build_name.wasm" artifacts
     fi
 
     build_schema="${2:-false}"
     # create schema if there is
-    if [ "$build_schema" == 'true' ]; then
+    if [ "$build_schema" == 'true' ]; then            
         echo "Creating schema in $contractdir"
         (
             cd artifacts
-            cargo run -q --bin schema --target-dir "$basedir/target"
+            cargo run -q --$([ -f "$contractdir/src/bin" ] && echo "bin" || echo "example") schema --target-dir "$basedir/target"
         )
     fi
 
     # show content
-    if [[ "${contractdir:0:1}" == / || "${contractdir:0:2}" == ~[/a-zA-Z] ]] then 
+    if [ "${contractdir:0:1}" == / || "${contractdir:0:2}" == ~[/a-zA-Z] ]; then 
         du -h "$contractdir/artifacts/$name.wasm"
     else 
         du -h $(realpath "$contractdir/artifacts/$name.wasm")
@@ -61,10 +61,11 @@ function build(){
 }
 
 contractdirs=()
-
+build_debug=false
+build_schema=false
 while test $# -gt 0; do    
    case "$1" in
-    --release|-r) build_release=true
+    --debug|-d) build_debug=true
     ;;
     --schema|-s) build_schema=true
     ;;
