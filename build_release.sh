@@ -42,13 +42,13 @@ function build(){
         wasm-opt -Os "$basedir/target/wasm32-unknown-unknown/release/$build_name.wasm" -o "artifacts/$name.wasm"
     fi
 
-    build_schema="${2:-false}"
     # create schema if there is
     if [ "$build_schema" == 'true' ]; then            
+        local bin=$([ -d "$contractdir/src/bin" ] && echo "bin" || echo "example")        
         echo "Creating schema in $contractdir"
         (
             cd artifacts
-            cargo run -q --$([ -f "$contractdir/src/bin" ] && echo "bin" || echo "example") schema --target-dir "$basedir/target"
+            cargo run -q --$bin schema --target-dir "$basedir/target"
         )
     fi
 
