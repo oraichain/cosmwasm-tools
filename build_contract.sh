@@ -92,5 +92,3 @@ for contractdir in "${contractdirs[@]}"
 do    
     build $contractdir
 done
-
-echo "done"
