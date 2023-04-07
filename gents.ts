@@ -43,7 +43,7 @@ const genTS = async (contracts: Array<ContractFile>, outPath: string, enabledRea
   console.log('✨ all done!');
 };
 
-const isPrivateType = (type) => {
+const isPrivateType = (type: string) => {
   return type.endsWith('Response') || type === 'InstantiateMsg' || type === 'ExecuteMsg' || type === 'QueryMsg' || type === 'MigrateMsg';
 };
 
@@ -95,7 +95,7 @@ const fixImport = async (clientName: string, ext: string, typeData: { [key: stri
   );
 };
 
-const fixTs = async (outPath, enabledReactQuery = false) => {
+const fixTs = async (outPath: string, enabledReactQuery = false) => {
   const parser = new TypescriptParser();
   const typeExt = '.types.ts';
   const typeData: { [key: string]: string } = {};
