@@ -238,6 +238,7 @@ const nestedMap: {
         enabledReactQuery = true;
         break;
       case '--output':
+      case '-o':
         tsFolder = process.argv[++i];
         break;
       default:

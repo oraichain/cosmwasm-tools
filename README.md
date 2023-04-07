@@ -15,6 +15,6 @@ The optimized contracts are generated in the artifacts/ directory.
 
 ```bash
 # if no --output is given, the default output is current directory
-yarn gents contracts/package1 contracts/package2 contracts/package3 [--output build_folder] [--react-query]
+yarn gents contracts/package1 contracts/package2 contracts/package3 [-o build_folder] [--react-query]
 
 ```
