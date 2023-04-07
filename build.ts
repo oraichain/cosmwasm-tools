@@ -113,7 +113,7 @@ const getFileHash = (file: string): Promise<string> =>
   if (buildSchema) args.push('-s');
   if (buildDebug) args.push('-d');
 
-  //   spawn('bash', args, { cwd: process.cwd(), env: process.env, stdio: 'inherit' });
+  spawn('bash', args, { cwd: process.cwd(), env: process.env, stdio: 'inherit' });
 
   if (watchContract) {
     console.log(`watching these contract folders:\n ${packages.join('\n')}`);
