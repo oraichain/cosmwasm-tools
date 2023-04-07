@@ -2,8 +2,8 @@
   "name": "cosmwasm-tools",
   "license": "MIT",
   "scripts": {
-    "gen-ts": "yarn ts-node gen-ts.ts",
-    "build": "bash build_release.sh",
+    "gen-ts": "yarn -s ts-node gen-ts.ts",
+    "build": "yarn -s ts-node build.ts",
     "postinstall": "patch-package",
     "test": "jest"
   },

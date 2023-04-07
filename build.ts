@@ -1,8 +1,6 @@
-import fs, { watch } from 'fs';
-import { EventEmitter } from 'events';
+import { spawn } from 'child_process';
 import crypto from 'crypto';
-import { exec, spawn } from 'child_process';
-import path from 'path';
+import fs, { watch } from 'fs';
 
 const getFileHash = (file: string): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -88,30 +86,46 @@ const getFileHash = (file: string): Promise<string> =>
   const packages: string[] = [];
   let buildDebug = false;
   let buildSchema = false;
+  let watchContract = false;
   for (let i = 2; i < process.argv.length; ++i) {
     const arg = process.argv[i];
     switch (arg) {
       case '--debug':
-        buildDebug = process.argv[++i].toLowerCase() === 'true';
+      case '-d':
+        buildDebug = true;
         break;
       case '--schema':
-        buildSchema = process.argv[++i].toLowerCase() === 'true';
+      case '-s':
+        buildSchema = true;
+        break;
+      case '--watch':
+      case '-w':
+        watchContract = true;
         break;
       default:
-        packages.push(process.argv[i]);
+        packages.push(arg);
         break;
     }
   }
 
-  console.log(`watching these contract folders:\n ${packages.join('\n')}`);
+  // run build command first
+  let args = ['build_contract.sh', ...packages];
+  if (buildSchema) args.push('-s');
+  if (buildDebug) args.push('-d');
 
-  packages.forEach((contractFolder) => {
-    watch(contractFolder, { recursive: true }, (_, filename) => {
-      if (!filename.endsWith('.rs')) return;
-      let args = ['build_release.sh', contractFolder];
-      if (buildSchema) args.push('-s');
-      if (buildDebug) args.push('-d');
-      spawn('bash', args, { cwd: process.cwd(), env: process.env, stdio: 'inherit' });
+  //   spawn('bash', args, { cwd: process.cwd(), env: process.env, stdio: 'inherit' });
+
+  if (watchContract) {
+    console.log(`watching these contract folders:\n ${packages.join('\n')}`);
+
+    packages.forEach((contractFolder) => {
+      watch(contractFolder, { recursive: true }, (_, filename) => {
+        if (!filename.endsWith('.rs')) return;
+        let args = ['build_contract.sh', contractFolder];
+        if (buildSchema) args.push('-s');
+        if (buildDebug) args.push('-d');
+        spawn('bash', args, { cwd: process.cwd(), env: process.env, stdio: 'inherit' });
+      });
     });
-  });
+  }
 })();

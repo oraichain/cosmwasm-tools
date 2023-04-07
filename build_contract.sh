@@ -59,25 +59,17 @@ function build(){
 contractdirs=()
 build_debug=false
 build_schema=false
-watch=false
 while test $# -gt 0; do    
    case "$1" in
-    --debug|-d) build_debug=true
+    -d) build_debug=true
     ;;
-    --schema|-s) build_schema=true
-    ;;
-    --watch|-w) watch=true 
-    ;;
+    -s) build_schema=true
+    ;;    
     *) contractdirs+=("$1")
     ;;
    esac
    shift   
 done
-
-if [ "$watch" == 'true' ]; then 
-    yarn ts-node watch.ts ${contractdirs[@]} --debug $build_debug --schema $build_schema
-    exit
-fi
 
 if [ ! -z `command -v sccache` ]
 then
