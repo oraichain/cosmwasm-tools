@@ -84,6 +84,8 @@ else
     echo "Run: 'cargo install sccache' for faster build"
 fi
 
+# make cargo load crates faster
+export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 
 # build all contracts
 for contractdir in "${contractdirs[@]}"
