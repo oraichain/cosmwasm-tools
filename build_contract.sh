@@ -2,10 +2,11 @@
 
 set -o errexit -o nounset -o pipefail
 
+# store shared libraries at the build tools folder
 basedir=$(pwd)
 
 function build(){        
-    contractdir=$(realpath "$basedir/$1")
+    contractdir=$(realpath "$1")
     cd $contractdir
     # name is extract from Cargo.toml
     name=$(basename "$1")
