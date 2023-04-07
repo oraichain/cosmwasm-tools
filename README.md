@@ -5,8 +5,8 @@
 # Build smart contracts
 
 ```bash
-# options: -d: build debug, -s: schema
-yarn build contracts/package1 contracts/package2 contracts/package3 [-d] [-s]
+# options: -d: build debug, -s: schema, -w: watch mode
+yarn build contracts/package1 contracts/package2 contracts/package3 [-d] [-s] [-w]
 ```
 
 The optimized contracts are generated in the artifacts/ directory.
