@@ -238,7 +238,7 @@ const nestedMap: {
         enabledReactQuery = true;
         break;
       case '--input':
-        const contractsFolder = process.argv[i + 1];
+        const contractsFolder = process.argv[++i];
         // check is single contract or not
         const newPackages = existsSync(join(contractsFolder, 'Cargo.toml'))
           ? [contractsFolder]
@@ -247,7 +247,7 @@ const nestedMap: {
         packages.push(...newPackages);
         break;
       case '--output':
-        tsFolder = process.argv[i + 1];
+        tsFolder = process.argv[++i];
         break;
     }
   }
