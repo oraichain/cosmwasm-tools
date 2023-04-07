@@ -6,6 +6,7 @@ set -o errexit -o nounset -o pipefail
 basedir=$(pwd)
 
 function build(){        
+    cd $basedir
     contractdir=$(realpath "$1")
     cd $contractdir
     # name is extract from Cargo.toml
@@ -86,7 +87,7 @@ fi
 
 # build all contracts
 for contractdir in "${contractdirs[@]}"
-do
+do    
     build $contractdir
 done
 
