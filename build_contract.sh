@@ -21,9 +21,11 @@ function build(){
     # Note that shortcuts from .cargo/config are not available in source code packages from crates.io
     mkdir -p artifacts
 
-    if [ "$build_debug" == 'true' ]; then
+    # rm old file to clear cache when displaying size
+    rm -f "artifacts/$name.wasm"
+    if [ "$build_debug" == 'true' ]; then        
         $CARGO build -q --lib --target-dir "$basedir/target" --target wasm32-unknown-unknown
-        cp "$basedir/target/wasm32-unknown-unknown/debug/$build_name.wasm" artifacts        
+        cp "$basedir/target/wasm32-unknown-unknown/debug/$build_name.wasm" "artifacts/$name.wasm"        
     else
         RUSTFLAGS='-C link-arg=-s' $CARGO build -q --release --lib --target-dir "$basedir/target" --target wasm32-unknown-unknown
         # wasm-optimize on all results
@@ -37,9 +39,7 @@ function build(){
             else 
                 brew install binaryen
             fi 
-        fi 
-        # rm old file to clear cache when displaying size
-        rm -f "artifacts/$name.wasm"
+        fi         
         wasm-opt -Os "$basedir/target/wasm32-unknown-unknown/release/$build_name.wasm" -o "artifacts/$name.wasm"
     fi
 
