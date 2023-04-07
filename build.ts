@@ -33,19 +33,21 @@ import fs, { watch } from 'fs';
   if (buildSchema) args.push('-s');
   if (buildDebug) args.push('-d');
 
-  spawn('bash', args, { cwd: process.cwd(), env: process.env, stdio: 'inherit' });
+  const buildProcess = spawn('bash', args, { cwd: process.cwd(), env: process.env, stdio: 'inherit' });
 
-  if (watchContract) {
-    console.log(`watching these contract folders:\n ${packages.join('\n')}`);
+  buildProcess.on('close', () => {
+    if (watchContract) {
+      console.log(`\n\nWatching these contract folders:\n ${packages.join('\n')}`);
 
-    packages.forEach((contractFolder) => {
-      watch(contractFolder, { recursive: true }, (_, filename) => {
-        if (!filename.endsWith('.rs')) return;
-        let args = ['build_contract.sh', contractFolder];
-        if (buildSchema) args.push('-s');
-        if (buildDebug) args.push('-d');
-        spawn('bash', args, { cwd: process.cwd(), env: process.env, stdio: 'inherit' });
+      packages.forEach((contractFolder) => {
+        watch(contractFolder, { recursive: true }, (_, filename) => {
+          if (!filename.endsWith('.rs')) return;
+          let args = ['build_contract.sh', contractFolder];
+          if (buildSchema) args.push('-s');
+          if (buildDebug) args.push('-d');
+          spawn('bash', args, { cwd: process.cwd(), env: process.env, stdio: 'inherit' });
+        });
       });
-    });
-  }
+    }
+  });
 })();
