@@ -1,7 +1,7 @@
 import codegen, { ContractFile } from '@cosmwasm/ts-codegen';
+import { TypescriptParser, File } from 'typescript-parser';
 import { join, basename, resolve as _resolve } from 'path';
 import * as fs from 'fs';
-import { TypescriptParser, File } from 'typescript-parser';
 
 const {
   existsSync,
@@ -237,17 +237,12 @@ const nestedMap: {
       case '--react-query':
         enabledReactQuery = true;
         break;
-      case '--input':
-        const contractsFolder = process.argv[++i];
-        // check is single contract or not
-        const newPackages = existsSync(join(contractsFolder, 'Cargo.toml'))
-          ? [contractsFolder]
-          : (await readdir(contractsFolder)).map((dir) => _resolve(contractsFolder, dir)).filter((packagePath) => existsSync(join(packagePath, 'Cargo.toml')));
-        // update new packages
-        packages.push(...newPackages);
-        break;
       case '--output':
         tsFolder = process.argv[++i];
+        break;
+      default:
+        // update new packages
+        packages.push(arg);
         break;
     }
   }
