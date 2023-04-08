@@ -9,8 +9,14 @@ function build(){
     cd $basedir
     contractdir=$(realpath "$1")
     cd $contractdir
+
+    # check if there is Cargo.toml
+    if [ ! -f 'Cargo.toml' ]; then 
+        return 0
+    fi 
+
     # name is extract from Cargo.toml
-    name=$(basename "$1")
+    name=$(basename "$1")    
     build_name=$(grep -o 'name *=.*' Cargo.toml | awk -F'[="]' '{print $3}')
     build_name=${build_name//-/_}
     
@@ -90,5 +96,8 @@ export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 # build all contracts
 for contractdir in "${contractdirs[@]}"
 do    
-    build $contractdir
+    build $contractdir &
 done
+
+# wait for all builds
+wait
