@@ -12,6 +12,10 @@
         "node_modules"
     ],
     "ts-node": {
-        "transpileOnly": true
+        "transpileOnly": true,
+        "esm": true,
+        "ignore": [
+            "node_modules/(?!@cosmwasm)"
+        ]
     }
 }
