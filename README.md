@@ -6,7 +6,7 @@
 
 ```bash
 # options: -d: build debug, -s: schema, -w: watch mode
-yarn build contracts/package1 contracts/package2 contracts/package3 [-d] [-s] [-w]
+yarn build contracts/package1 contracts/package2 contracts/package3 [-dsw]
 ```
 
 The optimized contracts are generated in the artifacts/ directory.

@@ -1,6 +1,5 @@
 import { spawn } from 'child_process';
-import crypto from 'crypto';
-import fs, { watch } from 'fs';
+import { watch } from 'fs';
 
 (async () => {
   const packages: string[] = [];
@@ -9,22 +8,43 @@ import fs, { watch } from 'fs';
   let watchContract = false;
   for (let i = 2; i < process.argv.length; ++i) {
     const arg = process.argv[i];
-    switch (arg) {
-      case '--debug':
-      case '-d':
-        buildDebug = true;
-        break;
-      case '--schema':
-      case '-s':
-        buildSchema = true;
-        break;
-      case '--watch':
-      case '-w':
-        watchContract = true;
-        break;
-      default:
-        packages.push(arg);
-        break;
+    if (!arg.startsWith('-')) {
+      packages.push(arg);
+      continue;
+    }
+
+    // processing options
+    const options = arg.substring(1);
+
+    // long options
+    if (options.startsWith('-')) {
+      switch (options.substring(1)) {
+        case 'debug':
+          buildDebug = true;
+          break;
+        case 'schema':
+          buildSchema = true;
+          break;
+        case 'watch':
+          watchContract = true;
+          break;
+      }
+      continue;
+    }
+
+    // normal options
+    for (const option of options) {
+      switch (option) {
+        case '-d':
+          buildDebug = true;
+          break;
+        case '-s':
+          buildSchema = true;
+          break;
+        case '-w':
+          watchContract = true;
+          break;
+      }
     }
   }
 
