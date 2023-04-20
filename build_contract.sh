@@ -22,7 +22,9 @@ function build(){
     
     CARGO=$([[ -f 'Xargo.toml' && $(rustup default) =~ ^nightly.* ]] && echo 'xargo' || echo 'cargo')
 
-    echo "Building contract in $contractdir"
+    local outputdir=${output:-$contractdir/artifacts}
+
+    echo "Building contract in $outputdir"
 
     # Linker flag "-s" for stripping (https://github.com/rust-lang/cargo/issues/3483#issuecomment-431209957)
     # Note that shortcuts from .cargo/config are not available in source code packages from crates.io
@@ -32,7 +34,7 @@ function build(){
     rm -f "artifacts/$name.wasm"
     if [ "$build_debug" == 'true' ]; then        
         $CARGO build -q --lib --target-dir "$basedir/target" --target wasm32-unknown-unknown
-        cp "$basedir/target/wasm32-unknown-unknown/debug/$build_name.wasm" "artifacts/$name.wasm"        
+        cp "$basedir/target/wasm32-unknown-unknown/debug/$build_name.wasm" "$outputdir/$name.wasm"        
     else
         RUSTFLAGS='-C link-arg=-s' $CARGO build -q --release --lib --target-dir "$basedir/target" --target wasm32-unknown-unknown
         # wasm-optimize on all results
@@ -47,7 +49,7 @@ function build(){
                 brew install binaryen
             fi 
         fi         
-        wasm-opt -Os "$basedir/target/wasm32-unknown-unknown/release/$build_name.wasm" -o "artifacts/$name.wasm"
+        wasm-opt -Os "$basedir/target/wasm32-unknown-unknown/release/$build_name.wasm" -o "$outputdir/$name.wasm"
     fi
 
     # create schema if there is
@@ -61,7 +63,7 @@ function build(){
     fi
 
     # show content    
-    du -h "$contractdir/artifacts/$name.wasm"    
+    du -h "$outputdir/$name.wasm"    
 }
 
 contractdirs=()
@@ -72,6 +74,9 @@ while test $# -gt 0; do
     -d) build_debug=true
     ;;
     -s) build_schema=true
+    ;;    
+    -o) shift
+        output=$(realpath "$1")    
     ;;    
     *) contractdirs+=("$1")
     ;;

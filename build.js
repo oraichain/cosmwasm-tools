@@ -4,45 +4,32 @@ const { watch } = require('fs');
 const packages = [];
 let buildDebug = false;
 let buildSchema = false;
+let output;
 let watchContract = false;
-for (const arg of process.argv.slice(2)) {
-  if (!arg.startsWith('-')) {
-    packages.push(arg);
-    continue;
-  }
 
-  // processing options
-  const options = arg.substring(1);
-
-  // long options
-  if (options.startsWith('-')) {
-    switch (options.substring(1)) {
-      case 'debug':
-        buildDebug = true;
-        break;
-      case 'schema':
-        buildSchema = true;
-        break;
-      case 'watch':
-        watchContract = true;
-        break;
-    }
-    continue;
-  }
-
-  // normal options
-  for (const option of options) {
-    switch (option) {
-      case 'd':
-        buildDebug = true;
-        break;
-      case 's':
-        buildSchema = true;
-        break;
-      case 'w':
-        watchContract = true;
-        break;
-    }
+for (let i = 2; i < process.argv.length; ++i) {
+  const arg = process.argv[i];
+  switch (arg) {
+    case '--debug':
+    case '-d':
+      buildDebug = true;
+      break;
+    case '--schema':
+    case '-s':
+      buildSchema = true;
+      break;
+    case '--watch':
+    case '-w':
+      watchContract = true;
+      break;
+    case '--output':
+    case '-o':
+      output = process.argv[++i];
+      break;
+    default:
+      // update new packages
+      packages.push(arg);
+      break;
   }
 }
 
@@ -50,6 +37,7 @@ for (const arg of process.argv.slice(2)) {
 const args = ['build_contract.sh'];
 if (buildSchema) args.push('-s');
 if (buildDebug) args.push('-d');
+if (output) args.push('-o', output);
 
 // start process
 const buildProcess = spawn('bash', args.concat(packages), { cwd: process.cwd(), env: process.env, stdio: 'inherit' });
