@@ -58,7 +58,8 @@ function build(){
         local bin=$([ -d "$contractdir/src/bin" ] && echo "bin" || echo "example")        
         echo "Creating schema in $contractdir"
         (
-            cd artifacts
+            mkdir -p $contractdir/artifacts
+            cd $contractdir/artifacts
             cargo run -q --$bin schema --target-dir "$basedir/target"
         )
     fi
