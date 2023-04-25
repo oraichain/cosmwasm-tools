@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import codegen, { ContractFile } from '@cosmwasm/ts-codegen/packages/ts-codegen';
 import * as fs from 'fs';
 import { resolve as _resolve, basename, join } from 'path';

@@ -4,6 +4,7 @@
 # Build results
 target/
 build/
+dist/
 
 # IDEs
 .vscode/
