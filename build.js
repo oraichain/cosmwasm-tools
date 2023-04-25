@@ -12,6 +12,10 @@ let watchContract = false;
 for (let i = 2; i < process.argv.length; ++i) {
   const arg = process.argv[i];
   switch (arg) {
+    case '-h':
+    case '--help':
+      console.log('%s contracts/package1 contracts/package2 contracts/package3 [-o build_folder] [-d] [-s] [-w]', process.argv[1].split('/').pop());
+      process.exit();
     case '--debug':
     case '-d':
       buildDebug = true;
