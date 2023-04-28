@@ -4,6 +4,7 @@ set -o errexit -o nounset -o pipefail
 
 # store shared libraries at the build tools folder
 basedir=$(pwd)
+targetdir=$(realpath ~/.cargo)
 
 function build(){        
     cd $basedir
@@ -34,10 +35,10 @@ function build(){
     # rm old file to clear cache when displaying size
     rm -f $wasm_file
     if [ "$build_debug" == 'true' ]; then        
-        $CARGO build -q --lib --target-dir "$basedir/target" --target wasm32-unknown-unknown
-        cp "$basedir/target/wasm32-unknown-unknown/debug/$build_name.wasm" "$wasm_file"        
+        $CARGO build -q --lib --target-dir "$targetdir" --target wasm32-unknown-unknown
+        cp "$targetdir/wasm32-unknown-unknown/debug/$build_name.wasm" "$wasm_file"        
     else
-        RUSTFLAGS='-C link-arg=-s' $CARGO build -q --release --lib --target-dir "$basedir/target" --target wasm32-unknown-unknown
+        RUSTFLAGS='-C link-arg=-s' $CARGO build -q --release --lib --target-dir "$targetdir" --target wasm32-unknown-unknown
         # wasm-optimize on all results
         echo "Optimizing $name.wasm"
         if [ ! `which wasm-opt` ] 
@@ -50,7 +51,7 @@ function build(){
                 brew install binaryen
             fi 
         fi         
-        wasm-opt -Os "$basedir/target/wasm32-unknown-unknown/release/$build_name.wasm" -o "$wasm_file"
+        wasm-opt -Os "$targetdir/wasm32-unknown-unknown/release/$build_name.wasm" -o "$wasm_file"
     fi
 
     # create schema if there is
@@ -60,7 +61,7 @@ function build(){
         (
             mkdir -p $contractdir/artifacts
             cd $contractdir/artifacts
-            cargo run -q --$bin schema --target-dir "$basedir/target"
+            cargo run -q --$bin schema --target-dir "$targetdir"
         )
     fi
 
