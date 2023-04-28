@@ -4,7 +4,7 @@ set -o errexit -o nounset -o pipefail
 
 # store shared libraries at the build tools folder
 basedir=$(pwd)
-targetdir=$(realpath ~/.cargo)
+targetdir=$(realpath ~/.cargo/target)
 
 function build(){        
     cd $basedir
