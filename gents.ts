@@ -2,7 +2,7 @@
 
 import codegen, { ContractFile } from '@cosmwasm/ts-codegen/packages/ts-codegen';
 import * as fs from 'fs';
-import { resolve as _resolve, basename, join } from 'path';
+import { resolve, basename, join } from 'path';
 import { File, TypescriptParser } from 'typescript-parser';
 
 const {
@@ -136,7 +136,8 @@ const fixTs = async (outPath: string, enabledReactQuery = false) => {
 };
 
 let enabledReactQuery = false;
-let tsFolder = _resolve(__dirname, 'build');
+// using current dir
+let tsFolder = resolve('build');
 
 (async () => {
   const packages: string[] = [];
@@ -153,7 +154,7 @@ let tsFolder = _resolve(__dirname, 'build');
         break;
       case '--output':
       case '-o':
-        tsFolder = process.argv[++i];
+        tsFolder = resolve(process.argv[++i]);
         break;
       default:
         // update new packages
