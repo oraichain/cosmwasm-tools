@@ -6,9 +6,8 @@ set -o errexit -o nounset -o pipefail
 basedir=$(pwd)
 targetdir=$(realpath ~/.cargo/target)
 
-function build(){        
-    cd $basedir
-    contractdir=$(realpath "$1")
+build_contract() {            
+    local contractdir="$1"
     cd $contractdir
 
     # check if there is Cargo.toml
@@ -54,19 +53,21 @@ function build(){
         wasm-opt -Os "$targetdir/wasm32-unknown-unknown/release/$build_name.wasm" -o "$wasm_file"
     fi
 
-    # create schema if there is
-    if [ "$build_schema" == 'true' ]; then            
-        local bin=$([ -d "$contractdir/src/bin" ] && echo "bin" || echo "example")        
-        echo "Creating schema in $contractdir"
-        (
-            mkdir -p $contractdir/artifacts
-            cd $contractdir/artifacts
-            cargo run -q --$bin schema --target-dir "$targetdir"
-        )
-    fi
-
     # show content    
-    du -h "$wasm_file"    
+    du -h "$wasm_file"            
+}
+
+build_schema() {
+    local contractdir="$1"
+    cd $contractdir            
+    local bin=$([ -d "$contractdir/src/bin" ] && echo "bin" || echo "example")        
+    echo "Creating schema in $contractdir"
+    (
+        mkdir -p $contractdir/artifacts
+        cd $contractdir/artifacts
+        cargo run -q --$bin schema --target-dir "$targetdir"
+    )
+    
 }
 
 contractdirs=()
@@ -101,10 +102,18 @@ fi
 # make cargo load crates faster
 export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 
+
+
 # build all contracts
 for contractdir in "${contractdirs[@]}"
 do    
-    build $contractdir &
+    cd $basedir    
+    # create schema if there is
+    if [ "$build_schema" == 'true' ]; then    
+        build_schema $(realpath "$contractdir")
+    else 
+        build_contract $(realpath "$contractdir") &
+    fi
 done
 
 # wait for all builds
