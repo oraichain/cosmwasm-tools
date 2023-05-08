@@ -46,7 +46,7 @@ const genTS = async (contracts: Array<ContractFile>, outPath: string, enabledRea
 };
 
 const isPrivateType = (type: string) => {
-  return type.endsWith('Response') || type.match(/^(?:Instantiate|Init|Execute|Handle|Query|Migrate)Msg$/);
+  return type.endsWith('Response') || type === 'InstantiateMsg' || type === 'ExecuteMsg' || type === 'QueryMsg' || type === 'MigrateMsg';
 };
 
 const fixImport = async (clientName: string, ext: string, typeData: { [key: string]: string }, outPath: string) => {
