@@ -62,12 +62,10 @@ build_schema() {
     cd $contractdir            
     local bin=$([ -d "$contractdir/src/bin" ] && echo "bin" || echo "example")        
     echo "Creating schema in $contractdir"
-    (
-        mkdir -p $contractdir/artifacts
-        cd $contractdir/artifacts
-        cargo run -q --$bin schema --target-dir "$targetdir"
-    )
     
+    mkdir -p $contractdir/artifacts
+    cd $contractdir/artifacts
+    cargo run -q --$bin schema --target-dir "$targetdir"
 }
 
 contractdirs=()
