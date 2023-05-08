@@ -10,7 +10,8 @@ const {
   promises: { readdir, readFile, writeFile, rm }
 } = fs;
 
-const genTS = async (contracts: Array<ContractFile>, outPath: string, enabledReactQuery: boolean = false) => {
+const genTS = async (contracts: Array<ContractFile>, tsFolder: string, enabledReactQuery: boolean = false) => {
+  const outPath = resolve(tsFolder);
   await rm(outPath, { recursive: true, force: true });
   await codegen({
     contracts,
@@ -42,6 +43,9 @@ const genTS = async (contracts: Array<ContractFile>, outPath: string, enabledRea
       }
     }
   });
+
+  await fixTs(outPath, enabledReactQuery);
+
   console.log('✨ all done!');
 };
 
@@ -136,9 +140,8 @@ const fixTs = async (outPath: string, enabledReactQuery = false) => {
 };
 
 let enabledReactQuery = false;
-let pwd = process.cwd();
 // using current dir
-let tsFolder = join(pwd, 'build');
+let tsFolder = 'build';
 
 (async () => {
   const packages: string[] = [];
@@ -155,7 +158,7 @@ let tsFolder = join(pwd, 'build');
         break;
       case '--output':
       case '-o':
-        tsFolder = resolve(process.argv[++i]);
+        tsFolder = process.argv[++i];
         break;
       default:
         // update new packages
@@ -177,5 +180,4 @@ let tsFolder = join(pwd, 'build');
     })
   );
   await genTS(contracts.filter(Boolean) as ContractFile[], tsFolder, enabledReactQuery);
-  await fixTs(tsFolder, enabledReactQuery);
 })();

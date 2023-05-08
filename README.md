@@ -23,7 +23,7 @@ yarn gents contracts/package1 contracts/package2 contracts/package3 [-o build_fo
 
 ```bash
 npm i -g @vercel/ncc
-ncc build gents.ts --no-source-map-register -t
+ncc build gents.ts --no-source-map-register -t -m
 cp dist/index.js $(npm -g bin)/cw-gents
 
 cp build_contract.sh $(npm -g bin)
