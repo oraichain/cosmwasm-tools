@@ -46,7 +46,7 @@ const genTS = async (contracts: Array<ContractFile>, outPath: string, enabledRea
 };
 
 const isPrivateType = (type: string) => {
-  return type.endsWith('Response') || type === 'InstantiateMsg' || type === 'ExecuteMsg' || type === 'QueryMsg' || type === 'MigrateMsg';
+  return type.endsWith('Response') || type.match(/^(?:Instantiate|Init|Execute|Handle|Query|Migrate)Msg$/);
 };
 
 const fixImport = async (clientName: string, ext: string, typeData: { [key: string]: string }, outPath: string) => {
@@ -136,8 +136,9 @@ const fixTs = async (outPath: string, enabledReactQuery = false) => {
 };
 
 let enabledReactQuery = false;
+let pwd = process.cwd();
 // using current dir
-let tsFolder = resolve('build');
+let tsFolder = join(pwd, 'build');
 
 (async () => {
   const packages: string[] = [];
