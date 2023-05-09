@@ -98,7 +98,7 @@ const fixTs = async (outPath: string, enabledReactQuery = false) => {
     })
   );
 
-  await Promise.all(
+  const classNames = await Promise.all(
     dirs.map(async (dir) => {
       const tsFile = join(outPath, dir);
       const tsData = (await readFile(tsFile)).toString();
@@ -121,22 +121,28 @@ const fixTs = async (outPath: string, enabledReactQuery = false) => {
 
       // update client file
 
-      const clientName = basename(dir, typeExt);
-      await fixImport(clientName, 'client.ts', typeData, outPath);
+      const className = basename(dir, typeExt);
+      await fixImport(className, 'client.ts', typeData, outPath);
 
       if (enabledReactQuery) {
-        await fixImport(clientName, 'react-query.ts', typeData, outPath);
+        await fixImport(className, 'react-query.ts', typeData, outPath);
       }
+      return className;
     })
   );
 
   await writeFile(join(outPath, 'types.ts'), Object.values(typeData).join('\n'));
 
-  // add export from types
-  const indexData = (await readFile(join(outPath, 'index.ts'))).toString();
-  if (indexData.indexOf('export * from "./types";') === -1) {
-    await writeFile(join(outPath, 'index.ts'), `${indexData}\nexport * from "./types";`);
+  const indexData = [];
+  for (const className of classNames) {
+    indexData.push(`export * as ${className}Types from './${className}.types';`);
+    indexData.push(`export * from './${className}.client';`);
   }
+
+  // add export from types
+  indexData.push('export * from "./types";');
+  // re-export
+  await writeFile(join(outPath, 'index.ts'), indexData.join('\n'));
 };
 
 let enabledReactQuery = false;
