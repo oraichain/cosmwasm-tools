@@ -276,14 +276,19 @@ const buildContracts = async (packages: string[], debug: boolean, schema: boolea
   // start watching process
   if (watchMode) {
     console.log(`\n\nWatching these contract folders:\n ${contractDirs.join('\n')}`);
-    let timer: NodeJS.Timer;
+    const running = {};
     const interval = 1000;
-    watch(contractDirs, { persistent: true, interval }).on('change', (filename) => {
+    watch(contractDirs, { persistent: true, interval }).on('change', async (filename) => {
       if (!filename.endsWith('.rs')) return;
       // get first path that contains file
-      clearTimeout(timer);
-      const contractFolder = contractDirs.find((p) => filename.startsWith(p));
-      timer = setTimeout(buildContract, interval, contractFolder, debug, outputDir, targetDir);
+      const contractDir = contractDirs.find((p) => filename.startsWith(p));
+      // running
+      if (running[contractDir]) return;
+      running[contractDir] = true;
+      const start = Date.now();
+      await buildContract(contractDir, debug, outputDir, targetDir);
+      running[contractDir] = false;
+      console.log('✨ all done in', Date.now() - start, 'ms!');
     });
   }
 };
