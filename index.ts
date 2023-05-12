@@ -298,7 +298,7 @@ yargs(hideBin(process.argv))
   .version('0.1.0')
   .command(
     'gents <paths...>',
-    'build a list of contract folders',
+    'generate TypeScript classes for the contract folders',
     (yargs) => {
       return yargs.option('--react-query', {
         type: 'boolean',
