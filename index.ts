@@ -1,5 +1,8 @@
 #!/usr/bin/env node
-
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
+import { spawn } from 'child_process';
+import { watch } from 'chokidar';
 import codegen, { ContractFile } from '@cosmwasm/ts-codegen/packages/ts-codegen';
 import * as fs from 'fs';
 import { resolve, basename, join } from 'path';
@@ -145,34 +148,7 @@ const fixTs = async (outPath: string, enabledReactQuery = false) => {
   await writeFile(join(outPath, 'index.ts'), indexData.join('\n'));
 };
 
-let enabledReactQuery = false;
-// using current dir
-let tsFolder = 'build';
-
-(async () => {
-  const packages: string[] = [];
-
-  for (let i = 2; i < process.argv.length; ++i) {
-    const arg = process.argv[i];
-    switch (arg) {
-      case '-h':
-      case '--help':
-        console.log('%s contracts/package1 contracts/package2 contracts/package3 [-o build_folder] [--react-query]', process.argv[1].split('/').pop());
-        process.exit();
-      case '--react-query':
-        enabledReactQuery = true;
-        break;
-      case '--output':
-      case '-o':
-        tsFolder = process.argv[++i];
-        break;
-      default:
-        // update new packages
-        packages.push(arg);
-        break;
-    }
-  }
-
+const genTypescripts = async (packages: string[], enabledReactQuery: boolean, output = 'build') => {
   const contracts = await Promise.all(
     packages.map(async (packagePath) => {
       const baseName = basename(packagePath);
@@ -185,5 +161,92 @@ let tsFolder = 'build';
       };
     })
   );
-  await genTS(contracts.filter(Boolean) as ContractFile[], tsFolder, enabledReactQuery);
-})();
+  await genTS(contracts.filter(Boolean) as ContractFile[], output, enabledReactQuery);
+};
+
+const buildContracts = (packages: string[], buildDebug: boolean, buildSchema: boolean, watchContract: boolean, output: string) => {
+  // run build command first
+  const args = ['build_contract.sh'];
+  if (buildSchema) args.push('-s');
+  if (buildDebug) args.push('-d');
+  if (output) args.push('-o', output);
+
+  // start process
+  const buildProcess = spawn('bash', args.concat(packages), { cwd: process.cwd(), env: process.env, stdio: 'inherit' });
+  buildProcess.on('close', () => {
+    if (watchContract) {
+      console.log(`\n\nWatching these contract folders:\n ${packages.join('\n')}`);
+      let timer: NodeJS.Timer;
+      const interval = 1000;
+      watch(packages, { persistent: true, interval }).on('change', (filename) => {
+        if (!filename.endsWith('.rs')) return;
+        // get first path that contains file
+        clearTimeout(timer);
+        const contractFolder = packages.find((p) => filename.startsWith(p));
+        timer = setTimeout(spawn, interval, 'bash', args.concat([contractFolder]), { cwd: process.cwd(), env: process.env, stdio: 'inherit' });
+      });
+    }
+  });
+};
+
+yargs(hideBin(process.argv))
+  .scriptName('cwtools')
+  .command(
+    'gents <paths...>',
+    'build a list of contract folders',
+    (yargs) => {
+      return yargs.option('--react-query', {
+        type: 'boolean',
+        description: 'Build with react-query support',
+        default: false
+      });
+    },
+    (argv) => {
+      // @ts-ignore
+      genTypescripts(argv.paths, argv.reactQuery, argv.output);
+    }
+  )
+  .command(
+    'build <paths...>',
+    'build a list of contract folders',
+    (yargs) => {
+      return yargs
+        .option('debug', {
+          alias: 'd',
+          type: 'boolean',
+          description: 'Build with cargo debug',
+          default: false
+        })
+        .option('schema', {
+          alias: 's',
+          type: 'boolean',
+          description: 'Build cargo schema only',
+          default: false
+        })
+        .option('watch', {
+          alias: 'w',
+          type: 'boolean',
+          description: 'Build with watch mode',
+          default: false
+        });
+    },
+    (argv) => {
+      // @ts-ignore
+      buildContracts(argv.paths, argv.debug, argv.schema, argv.watch, argv.output);
+    }
+  )
+  .positional('paths', {
+    describe: 'a list of contract folders',
+    type: 'string'
+  })
+  .option('help', {
+    alias: 'h',
+    demandOption: false
+  })
+  .option('output', {
+    alias: 'o',
+    type: 'string',
+    description: 'The output folder',
+    default: undefined
+  })
+  .parse();
