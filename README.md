@@ -27,6 +27,7 @@ ncc build gents.ts --no-source-map-register -t -m
 cp dist/index.js $(npm -g bin)/cw-gents
 
 cp build_contract.sh $(npm -g bin)
-cp build.js $(npm -g bin)/cw-build
+ncc build build.ts --no-source-map-register -t -m
+cp dist/index.js $(npm -g bin)/cw-build
 # then you can type `cw-gents` instead of `yarn gents` and `cw-build` instead of `yarn build`
 ```

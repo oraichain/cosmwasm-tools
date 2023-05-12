@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
-const { spawn } = require('child_process');
-const { watch } = require('fs');
+import { spawn } from 'child_process';
+import { watch } from 'chokidar';
 
 const packages = [];
 let buildDebug = false;
 let buildSchema = false;
-let output;
+let output: string;
 let watchContract = false;
 
 for (let i = 2; i < process.argv.length; ++i) {
@@ -50,14 +50,14 @@ const buildProcess = spawn('bash', args.concat(packages), { cwd: process.cwd(), 
 buildProcess.on('close', () => {
   if (watchContract) {
     console.log(`\n\nWatching these contract folders:\n ${packages.join('\n')}`);
-    packages.forEach((contractFolder) => {
-      let timer = null;
-      watch(contractFolder, { recursive: true }, (_, filename) => {
-        if (!filename.endsWith('.rs')) return;
-        // 500ms throttling
-        clearTimeout(timer);
-        timer = setTimeout(() => spawn('bash', args.concat([contractFolder]), { cwd: process.cwd(), env: process.env, stdio: 'inherit' }), 500);
-      });
+    let timer: NodeJS.Timer;
+    const interval = 1000;
+    watch(packages, { persistent: true, interval }).on('change', (filename) => {
+      if (!filename.endsWith('.rs')) return;
+      // get first path that contains file
+      clearTimeout(timer);
+      const contractFolder = packages.find((p) => filename.startsWith(p));
+      timer = setTimeout(spawn, interval, 'bash', args.concat([contractFolder]), { cwd: process.cwd(), env: process.env, stdio: 'inherit' });
     });
   }
 });
