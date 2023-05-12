@@ -1,6 +1,8 @@
 # Installation
 
-`yarn`
+```bash
+yarn
+```
 
 # Build smart contracts
 
@@ -22,10 +24,6 @@ yarn start gents contracts/package1 contracts/package2 contracts/package3 [-o bu
 # Build to command
 
 ```bash
-npm i -g @vercel/ncc@0.34.0
-
-cp build_contract.sh $(npm -g bin)
-ncc build index.ts --no-source-map-register -t -m
-cp dist/index.js $(npm -g bin)/cwtools
+yarn build
 # then you can type `cwtools gents` instead of `yarn start gents` and `cwtools build` instead of `yarn start build`
 ```

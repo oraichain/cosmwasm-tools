@@ -2,7 +2,9 @@
   "name": "cosmwasm-tools",
   "license": "MIT",
   "scripts": {
+    "preinstall": "npm i -g wasm-opt",
     "start": "yarn -s ts-node index.ts",
+    "build": "ncc build index.ts --no-source-map-register -t -m && cp dist/index.js $(npm -g bin)/cwtools",
     "postinstall": "cd node_modules/@cosmwasm/ts-codegen && yarn && yarn build"
   },
   "engines": {
@@ -11,12 +13,15 @@
   "dependencies": {
     "@cosmwasm/ts-codegen": "https://github.com/oraichain/ts-codegen.git",
     "chokidar": "^3.5.3",
+    "toml": "^3.0.0",
     "typescript-parser": "^2.6.1",
     "yargs": "^17.7.2"
   },
   "devDependencies": {
+    "@types/shelljs": "^0.8.12",
     "@types/yargs": "^17.0.24",
     "ts-node": "^10.9.1",
+    "@vercel/ncc": "=0.34.0",
     "typescript": "^5.0.3"
   }
 }
