@@ -24,6 +24,6 @@ yarn start gents contracts/package1 contracts/package2 contracts/package3 [-o bu
 # Build to command
 
 ```bash
-yarn build
+yarn build && cp dist/index.js /usr/local/bin/cwtools
 # then you can type `cwtools gents` instead of `yarn start gents` and `cwtools build` instead of `yarn start build`
 ```
