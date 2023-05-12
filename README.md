@@ -25,7 +25,7 @@ yarn start gents contracts/package1 contracts/package2 contracts/package3 [-o bu
 npm i -g @vercel/ncc
 
 cp build_contract.sh $(npm -g bin)
-ncc build build.ts --no-source-map-register -t -m
+ncc build index.ts --no-source-map-register -t -m
 cp dist/index.js $(npm -g bin)/cw-build
 # then you can type `cwtools gents` instead of `yarn start gents` and `cwtools build` instead of `yarn start build`
 ```
