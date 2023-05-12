@@ -58,8 +58,6 @@ const genTS = async (contracts: Array<ContractFile>, tsFolder: string, enabledRe
   });
 
   await fixTs(outPath, enabledReactQuery);
-
-  console.log('✨ all done!');
 };
 
 const isPrivateType = (type: string) => {
@@ -303,9 +301,11 @@ yargs(hideBin(process.argv))
         default: false
       });
     },
-    (argv) => {
+    async (argv) => {
+      const start = Date.now();
       // @ts-ignore
-      genTypescripts(argv.paths, argv.reactQuery, argv.output);
+      await genTypescripts(argv.paths, argv.reactQuery, argv.output);
+      console.log('✨ all done in', Date.now() - start, 'ms!');
     }
   )
   .command(
@@ -332,9 +332,11 @@ yargs(hideBin(process.argv))
           default: false
         });
     },
-    (argv) => {
+    async (argv) => {
+      const start = Date.now();
       // @ts-ignore
-      buildContracts(argv.paths, argv.debug, argv.schema, argv.watch, argv.output);
+      await buildContracts(argv.paths, argv.debug, argv.schema, argv.watch, argv.output);
+      console.log('✨ all done in', Date.now() - start, 'ms!');
     }
   )
   .positional('paths', {
