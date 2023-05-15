@@ -15,9 +15,9 @@ const {
   promises: { readdir, readFile, writeFile, rm, mkdir, stat, copyFile }
 } = fs;
 
-const spawnPromise = async (cmd: string, args: readonly string[], currentDir?: string, env?: NodeJS.ProcessEnv) => {
+const spawnPromise = (cmd: string, args: readonly string[], currentDir?: string, env?: NodeJS.ProcessEnv) => {
   const proc = spawn(cmd, args, { env: { ...process.env, ...env }, stdio: 'inherit', cwd: currentDir });
-  return await new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     proc.on('close', resolve);
     proc.on('error', reject);
   });
