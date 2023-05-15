@@ -1,27 +1,36 @@
 {
   "name": "cosmwasm-tools",
   "license": "MIT",
+  "main": "src/index.ts",
   "scripts": {
     "preinstall": "npm i -g wasm-opt",
-    "start": "yarn -s ts-node index.ts",
-    "build": "ncc build index.ts --no-source-map-register -t -m",
+    "start": "yarn -s ts-node src/index.ts",
+    "build": "ncc build src/index.ts --no-source-map-register -t -m",
     "postinstall": "cd node_modules/@cosmwasm/ts-codegen && yarn && yarn build"
   },
   "engines": {
     "node": ">=16"
   },
   "dependencies": {
+    "@cosmjs/cosmwasm-stargate": "^0.29.5",
+    "@cosmjs/crypto": "^0.29.5",
+    "@cosmjs/math": "^0.29.5",
+    "@cosmjs/proto-signing": "^0.29.5",
+    "@cosmjs/stargate": "^0.29.5",
     "@cosmwasm/ts-codegen": "https://github.com/oraichain/ts-codegen.git",
     "chokidar": "^3.5.3",
+    "dotenv": "^16.0.3",
+    "readline-sync": "^1.4.10",
     "toml": "^3.0.0",
     "typescript-parser": "^2.6.1",
     "yargs": "^17.7.2"
   },
   "devDependencies": {
+    "@types/readline-sync": "^1.4.4",
     "@types/shelljs": "^0.8.12",
     "@types/yargs": "^17.0.24",
-    "ts-node": "^10.9.1",
     "@vercel/ncc": "=0.34.0",
+    "ts-node": "^10.9.1",
     "typescript": "^5.0.3"
   }
 }
