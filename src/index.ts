@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import dotenv from 'dotenv';
-import * as fs from 'fs';
 import path from 'path';
 import readlineSync from 'readline-sync';
 import yargs from 'yargs';
@@ -28,9 +27,6 @@ yargs(hideBin(process.argv))
   .config('env', (path) => {
     const config = dotenv.config({ path }).parsed ?? {};
     return { mnemonic: config.ENCRYPTED_MNEMONIC ? decryptMnemonic(config.ENCRYPTED_MNEMONIC) : config.MNEMONIC };
-  })
-  .config('file-input', (path) => {
-    return { input: fs.readFileSync(path).toString() };
   })
   .default('env', '.env')
   // all commands

@@ -1,4 +1,5 @@
 import { Argv } from 'yargs';
+import fs from 'fs';
 import uploadCmd from './cmd/upload';
 import instantiateCmd from './cmd/instantiate';
 import deployCmd from './cmd/deploy';
@@ -9,6 +10,9 @@ import queryCmd from './cmd/query';
 export default (yargs: Argv) => {
   yargs
     .usage('usage: $0 wasm <command> [options]')
+    .config('file-input', (path) => {
+      return { input: fs.readFileSync(path).toString() };
+    })
     .command('upload', 'upload a smart contract', uploadCmd)
     .command('instantiate', 'instantiate a smart contract', instantiateCmd)
     .command('deploy', 'deploy a smart contract using cosmjs', deployCmd)

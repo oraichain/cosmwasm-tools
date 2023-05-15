@@ -2,28 +2,25 @@
 
 ```bash
 yarn
+yarn build
+cp dist/index.js /usr/local/bin/cwtools
 ```
 
-# Build smart contracts
+then you can type `cwtools -h`
 
 ```bash
-# options: -d|--debug: build debug, -s|--schema: schema, -w|--watch: watch mode, -o|--output: build folder
-yarn start build contracts/package1 contracts/package2 contracts/package3 [-o build_folder] [-d] [-s] [-w]
-```
+cwtools [command]
 
-The optimized contracts are generated in the artifacts/ directory.
+Commands:
+  cwtools gents   generate TypeScript classes for the contract folders
+  cwtools build   build a list of contract folders
+  cwtools wasm    wasm commands
+  cwtools script  run custom script
 
-# Generate typescript code
+Options:
+  -h, --help        Show help                                          [boolean]
+      --version     Show version number                                [boolean]
+      --env         Path to JSON config file                   [default: ".env"]
+      --file-input  Path to JSON config file
 
-```bash
-# options: -o|output: build folder, if no build folder is given, the default output is current directory
-yarn start gents contracts/package1 contracts/package2 contracts/package3 [-o build_folder] [--react-query]
-
-```
-
-# Build to command
-
-```bash
-yarn build && cp dist/index.js /usr/local/bin/cwtools
-# then you can type `cwtools gents` instead of `yarn start gents` and `cwtools build` instead of `yarn start build`
 ```
