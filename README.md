@@ -29,7 +29,7 @@ Options:
 
 ```bash
 # generate encrypted mnemonic
-cwtools script script/encrypt_mnemonic.js
+cwtools script script/encrypt_mnemonic.js [mnemonic_file]
 
 # then put it into .env file then run
 cwtools wasm -h
