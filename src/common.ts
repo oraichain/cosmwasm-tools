@@ -1,4 +1,5 @@
 import { spawn } from 'child_process';
+import readlineSync from 'readline-sync';
 import crypto from 'crypto';
 
 export const encrypt = (password: string, val: string) => {
@@ -26,4 +27,9 @@ export const spawnPromise = (cmd: string, args: readonly string[], currentDir?: 
     proc.on('close', resolve);
     proc.on('error', reject);
   });
+};
+
+export const decryptMnemonic = (mnemonic: string) => {
+  const password = readlineSync.question('enter passphrase:', { hideEchoBack: true });
+  return decrypt(password, mnemonic);
 };

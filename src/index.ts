@@ -2,31 +2,17 @@
 
 import dotenv from 'dotenv';
 import path from 'path';
-import readlineSync from 'readline-sync';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { decrypt } from './common';
 import gentsCmd from './cmd/gents';
 import buildCmd from './cmd/build';
 import wasmCmd from './cmd/wasm';
-
-let password: string;
-const decryptMnemonic = (mnemonic: string) => {
-  if (mnemonic && mnemonic.indexOf(' ') === -1) {
-    if (!password) {
-      password = readlineSync.question('enter passphrase:', { hideEchoBack: true });
-    }
-    return decrypt(password, mnemonic);
-  }
-  return mnemonic;
-};
 
 yargs(hideBin(process.argv))
   .scriptName('cwtools')
   .version('0.1.0')
   .config('env', (path) => {
-    const config = dotenv.config({ path }).parsed ?? {};
-    return { mnemonic: config.ENCRYPTED_MNEMONIC ? decryptMnemonic(config.ENCRYPTED_MNEMONIC) : config.MNEMONIC };
+    return dotenv.config({ path }).parsed ?? {};
   })
   .default('env', '.env')
   // all commands

@@ -2,13 +2,15 @@
 import * as cosmwasm from '@cosmjs/cosmwasm-stargate';
 import { DirectSecp256k1HdWallet } from '@cosmjs/proto-signing';
 import { GasPrice } from '@cosmjs/stargate';
+import { decryptMnemonic } from '../../../common';
 import { Argv } from 'yargs';
 
 export const migrate = async (argv: Argv) => {
   const [address] = argv._.slice(-1);
   const { codeId } = argv;
   const prefix = process.env.PREFIX || 'orai';
-  const wallet = await DirectSecp256k1HdWallet.fromMnemonic(argv.mnemonic, {
+  const mnemonic = argv.ENCRYPTED_MNEMONIC ? decryptMnemonic(argv.ENCRYPTED_MNEMONIC) : argv.MNEMONIC;
+  const wallet = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, {
     prefix
   });
   const [firstAccount] = await wallet.getAccounts();

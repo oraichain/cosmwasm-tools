@@ -24,3 +24,13 @@ Options:
       --file-input  Path to JSON config file
 
 ```
+
+# Cosmwasm commands with encrypted mnemonic
+
+```bash
+# generate encrypted mnemonic
+cwtools script script/encrypt_mnemonic.js
+
+# then put it into .env file then run
+cwtools wasm -h
+```

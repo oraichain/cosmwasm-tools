@@ -4,6 +4,7 @@ import * as cosmwasm from '@cosmjs/cosmwasm-stargate';
 import { stringToPath } from '@cosmjs/crypto';
 import { DirectSecp256k1HdWallet } from '@cosmjs/proto-signing';
 import { GasPrice } from '@cosmjs/stargate';
+import { decryptMnemonic } from '../../../common';
 import { Argv } from 'yargs';
 
 export default async (yargs: Argv) => {
@@ -21,7 +22,8 @@ export default async (yargs: Argv) => {
   const [address] = argv._.slice(-1);
   const prefix = process.env.PREFIX || 'orai';
   const denom = process.env.DENOM || 'orai';
-  const wallet = await DirectSecp256k1HdWallet.fromMnemonic(argv.mnemonic, {
+  const mnemonic = argv.ENCRYPTED_MNEMONIC ? decryptMnemonic(argv.ENCRYPTED_MNEMONIC) : argv.MNEMONIC;
+  const wallet = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, {
     hdPaths: [stringToPath(process.env.HD_PATH)],
     prefix
   });

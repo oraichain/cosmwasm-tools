@@ -1,19 +1,17 @@
 import { Argv } from 'yargs';
 import fs from 'fs';
 import { DirectSecp256k1HdWallet } from '@cosmjs/proto-signing';
-import { Decimal } from '@cosmjs/math';
+import { decryptMnemonic } from '../../../common';
 import { GasPrice } from '@cosmjs/stargate';
 import * as cosmwasm from '@cosmjs/cosmwasm-stargate';
 
 export const upload = async (argv) => {
   const [file] = argv._.slice(-1);
   const prefix = process.env.PREFIX || 'orai';
-  const denom = process.env.DENOM || 'orai';
-  const { gas, source } = argv;
 
   const wasmBody = fs.readFileSync(file);
-
-  const wallet = await DirectSecp256k1HdWallet.fromMnemonic(argv.mnemonic, {
+  const mnemonic = argv.ENCRYPTED_MNEMONIC ? decryptMnemonic(argv.ENCRYPTED_MNEMONIC) : argv.MNEMONIC;
+  const wallet = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, {
     prefix
   });
   const [firstAccount] = await wallet.getAccounts();
