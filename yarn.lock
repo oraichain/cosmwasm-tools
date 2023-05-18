@@ -339,7 +339,7 @@
 
 "@cosmwasm/ts-codegen@https://github.com/oraichain/ts-codegen.git":
   version "0.0.1"
-  resolved "https://github.com/oraichain/ts-codegen.git#1d5e6e494631706d9783e7a2cd4d8a22fdb8933b"
+  resolved "https://github.com/oraichain/ts-codegen.git#79e547904212672652cb6e5c66ee913c939b5366"
   dependencies:
     "@jest/transform" "28.1.3"
 
