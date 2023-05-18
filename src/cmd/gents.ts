@@ -2,7 +2,7 @@
 import codegen, { ContractFile } from '@cosmwasm/ts-codegen/packages/ts-codegen';
 import * as fs from 'fs';
 import { basename, join, resolve } from 'path';
-import { File, TypescriptParser } from 'typescript-parser';
+import { File, PropertyDeclaration, TypescriptParser } from 'typescript-parser';
 
 const {
   existsSync,
@@ -89,6 +89,8 @@ const fixTs = async (outPath: string, enabledReactQuery = false) => {
 
       for (let token of parsed.declarations) {
         if (!isPrivateType(token.name) && !typeData[token.name]) {
+          // check props has private prop
+          if (token.properties?.some((prop: PropertyDeclaration) => isPrivateType(prop.type))) continue;
           typeData[token.name] = tsData.substring(token.start ?? 0, token.end);
         }
       }
