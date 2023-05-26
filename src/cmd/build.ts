@@ -57,7 +57,7 @@ const buildContract = async (contractDir: string, debug: boolean, output: string
 
     // wasm-optimize on all results
     console.log(`Optimizing ${wasmFile}`);
-    await spawnPromise('wasm-opt', ['-Os', join(targetDir, 'wasm32-unknown-unknown', 'release', buildName + '.wasm'), '-o', wasmFile], contractDir);
+    await spawnPromise('wasm-opt', ['-Os', '--disable-sign-ext', join(targetDir, 'wasm32-unknown-unknown', 'release', buildName + '.wasm'), '-o', wasmFile], contractDir);
   }
 
   // show content
