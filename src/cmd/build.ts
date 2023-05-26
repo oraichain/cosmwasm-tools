@@ -31,7 +31,7 @@ const buildSchemas = async (packages: string[], targetDir: string) => {
   }
 };
 
-const buildContract = async (contractDir: string, debug: boolean, output: string, targetDir: string, optimize: string) => {
+const buildContract = async (contractDir: string, debug: boolean, output: string, targetDir: string, optimizeArgs: string[]) => {
   // name is extract from Cargo.toml
   const cargoPath = join(contractDir, 'Cargo.toml');
   const name = basename(contractDir);
@@ -61,7 +61,7 @@ const buildContract = async (contractDir: string, debug: boolean, output: string
 
     // wasm-optimize on all results
     console.log(`Optimizing ${wasmFile}`);
-    await spawnPromise('wasm-opt', [...optimize.split(/\s+/), '--disable-sign-ext', join(targetDir, 'wasm32-unknown-unknown', 'release', buildName + '.wasm'), '-o', wasmFile], contractDir);
+    await spawnPromise('wasm-opt', [...optimizeArgs, '--disable-sign-ext', join(targetDir, 'wasm32-unknown-unknown', 'release', buildName + '.wasm'), '-o', wasmFile], contractDir);
   }
 
   // show content
@@ -80,7 +80,7 @@ const buildContract = async (contractDir: string, debug: boolean, output: string
  * @param watchContract
  * @param output
  */
-const buildContracts = async (packages: string[], debug: boolean, schema: boolean, watchMode: boolean, output: string, optimize: string) => {
+const buildContracts = async (packages: string[], debug: boolean, schema: boolean, watchMode: boolean, output: string, optimizeArgs: string[]) => {
   const cargoDir = join(os.homedir(), '.cargo');
   const targetDir = join(cargoDir, 'target');
 
@@ -114,7 +114,7 @@ const buildContracts = async (packages: string[], debug: boolean, schema: boolea
   // run build all frist
   await Promise.all(
     contractDirs.map(async (contractDir) => {
-      return await buildContract(contractDir, debug, outputDir, targetDir, optimize);
+      return await buildContract(contractDir, debug, outputDir, targetDir, optimizeArgs);
     })
   );
 
@@ -131,7 +131,7 @@ const buildContracts = async (packages: string[], debug: boolean, schema: boolea
       if (running[contractDir]) return;
       running[contractDir] = true;
       const start = Date.now();
-      await buildContract(contractDir, debug, outputDir, targetDir, optimize);
+      await buildContract(contractDir, debug, outputDir, targetDir, optimizeArgs);
       running[contractDir] = false;
       console.log('✨ all done in', Date.now() - start, 'ms!');
     });
@@ -176,6 +176,6 @@ export default async (yargs: Argv) => {
     });
 
   const start = Date.now();
-  await buildContracts(argv._.slice(1), argv.debug, argv.schema, argv.watch, argv.output, argv.optimize);
+  await buildContracts(argv._.slice(1), argv.debug, argv.schema, argv.watch, argv.output, argv.optimize.split(/\s+/));
   console.log('✨ all done in', Date.now() - start, 'ms!');
 };
