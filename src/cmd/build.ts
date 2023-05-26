@@ -35,7 +35,11 @@ const buildContract = async (contractDir: string, debug: boolean, output: string
   // name is extract from Cargo.toml
   const cargoPath = join(contractDir, 'Cargo.toml');
   const name = basename(contractDir);
-  const buildName = toml.parse(await readFile(cargoPath).then((b) => b.toString())).package.name.replaceAll('-', '_');
+  const tomlObj = toml.parse(await readFile(cargoPath).then((b) => b.toString()));
+  if (!tomlObj.package?.name) {
+    return console.warn(`"${contractDir}" is not a contract folder!`);
+  }
+  const buildName = tomlObj.package.name.replaceAll('-', '_');
   const artifactDir = join(contractDir, 'artifacts');
   const outputDir = output || artifactDir;
   const wasmFile = join(outputDir, name + '.wasm');
