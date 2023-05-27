@@ -172,7 +172,7 @@ export default async (yargs: Argv) => {
     .option('optimize', {
       type: 'string',
       description: 'Pass args to `wasm-opt`',
-      default: '-Os'
+      default: '-Os --low-memory-unused'
     });
 
   const start = Date.now();
