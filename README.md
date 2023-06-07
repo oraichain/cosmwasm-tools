@@ -1,23 +1,12 @@
 # Installation
 
 You can install cwtools globally using npm
-`npm install -g @oraichain/cwtools`
 
-Or you can install locally:
-
-```bash
-yarn
-yarn build
-cp dist/index.js /usr/local/bin/cwtools
-```
+`npm install -g @oraichain/cwtools --ignore-scripts`
 
 # Usage
 
 Type `cwtools -h`
-
-# NPX Usage
-
-If you don't want to install the package globally, you can use npx to run the command `npx @oraichain/cwtools -h`
 
 ```bash
 cwtools [command]
