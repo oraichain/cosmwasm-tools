@@ -1,14 +1,17 @@
 {
   "name": "@oraichain/cwtools",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "license": "MIT",
   "main": "dist/index.js",
-  "bin": "lib/index.js",
+  "bin": "dist/index.js",
   "author": "Thanh Tu <tu@orai.io>",
   "repository": {
     "type": "git",
     "url": "https://github.com/oraichain/cosmwasm-tools"
   },
+  "files": [
+    "dist/"
+  ],
   "scripts": {
     "preinstall": "npm i -g wasm-opt",
     "start": "yarn -s ts-node src/index.ts",
