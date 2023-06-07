@@ -16,4 +16,4 @@ dist/
 
 # nodejs
 node_modules
-
+.npmrc
