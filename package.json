@@ -1,7 +1,13 @@
 {
-  "name": "cosmwasm-tools",
+  "name": "@oraichain/cwtools",
   "license": "MIT",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
+  "bin": "lib/index.js",
+  "author": "Thanh Tu <tu@orai.io>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oraichain/cosmwasm-tools"
+  },
   "scripts": {
     "preinstall": "npm i -g wasm-opt",
     "start": "yarn -s ts-node src/index.ts",
@@ -32,5 +38,6 @@
     "@vercel/ncc": "=0.34.0",
     "ts-node": "^10.9.1",
     "typescript": "^5.0.3"
-  }
+  },
+  "version": "0.0.2"
 }
