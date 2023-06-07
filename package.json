@@ -1,5 +1,6 @@
 {
   "name": "@oraichain/cwtools",
+  "version": "0.0.3",
   "license": "MIT",
   "main": "dist/index.js",
   "bin": "lib/index.js",
@@ -8,6 +9,9 @@
     "type": "git",
     "url": "https://github.com/oraichain/cosmwasm-tools"
   },
+  "files": [
+    "dist/"
+  ],
   "scripts": {
     "preinstall": "npm i -g wasm-opt",
     "start": "yarn -s ts-node src/index.ts",
@@ -38,6 +42,5 @@
     "@vercel/ncc": "=0.34.0",
     "ts-node": "^10.9.1",
     "typescript": "^5.0.3"
-  },
-  "version": "0.0.2"
+  }
 }
