@@ -1,6 +1,6 @@
 {
   "name": "@oraichain/cwtools",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "license": "MIT",
   "main": "dist/index.js",
   "bin": "dist/index.js",
@@ -14,6 +14,7 @@
   ],
   "scripts": {
     "preinstall": "npm i -g wasm-opt",
+    "deploy": "yarn publish --access public . --patch",
     "start": "yarn -s ts-node src/index.ts",
     "build": "ncc build src/index.ts --no-source-map-register -t -m",
     "postinstall": "cd node_modules/@cosmwasm/ts-codegen && yarn && yarn build"
