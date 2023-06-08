@@ -150,7 +150,7 @@ const genTypescripts = async (packages: string[], enabledReactQuery: boolean, ou
   const targetDir = join(cargoDir, 'target');
   const contracts = await Promise.all(
     packages.map(async (packagePath) => {
-      const baseName = basename(packagePath);
+      const baseName = basename(resolve(packagePath));
       const schemaDir = join(packagePath, 'artifacts', 'schema');
 
       // make sure to build schema first time
