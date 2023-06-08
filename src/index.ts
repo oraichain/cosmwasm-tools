@@ -7,10 +7,11 @@ import { hideBin } from 'yargs/helpers';
 import gentsCmd from './cmd/gents';
 import buildCmd from './cmd/build';
 import wasmCmd from './cmd/wasm';
+import { version } from '../package.json';
 
 yargs(hideBin(process.argv))
   .scriptName('cwtools')
-  .version('0.1.0')
+  .version(version)
   .config('env', (path) => {
     return dotenv.config({ path }).parsed ?? {};
   })
