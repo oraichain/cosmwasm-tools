@@ -10,22 +10,19 @@ const {
 } = fs;
 
 export const encrypt = (password: string, val: string) => {
-  const hash = crypto.createHash('sha256').update(password).digest('hex');
-  const ENC_KEY = hash.substr(0, 32);
-  const IV = hash.substr(32, 16);
-  let cipher = crypto.createCipheriv('aes-256-cbc', ENC_KEY, IV);
-  let encrypted = cipher.update(val, 'utf8', 'base64');
-  encrypted += cipher.final('base64');
-  return encrypted;
+  const hashedPassword = crypto.createHash('sha256').update(password).digest();
+  const IV = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv('aes-256-cbc', hashedPassword, IV);
+  return Buffer.concat([IV, cipher.update(val), cipher.final()]).toString('base64');
 };
 
-export const decrypt = (password: string, encrypted: string) => {
-  const hash = crypto.createHash('sha256').update(password).digest('hex');
-  const ENC_KEY = hash.substr(0, 32);
-  const IV = hash.substr(32, 16);
-  let decipher = crypto.createDecipheriv('aes-256-cbc', ENC_KEY, IV);
-  let decrypted = decipher.update(encrypted, 'base64', 'utf8');
-  return decrypted + decipher.final('utf8');
+export const decrypt = (password: string, val: string) => {
+  const hashedPassword = crypto.createHash('sha256').update(password).digest();
+  const encryptedText = Buffer.from(val, 'base64');
+  const IV = encryptedText.subarray(0, 16);
+  const encrypted = encryptedText.subarray(16);
+  const decipher = crypto.createDecipheriv('aes-256-cbc', hashedPassword, IV);
+  return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString();
 };
 
 export const spawnPromise = (cmd: string, args: readonly string[], currentDir?: string, env?: NodeJS.ProcessEnv) => {

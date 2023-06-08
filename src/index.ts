@@ -26,7 +26,7 @@ yargs(hideBin(process.argv))
       type: 'string'
     });
     // @ts-ignore
-    require(path.resolve(argv._[1]))(argv);
+    (__non_webpack_require__ ?? require)(path.resolve(argv._[1]))(argv);
   })
   .option('help', {
     alias: 'h',

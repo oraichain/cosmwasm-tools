@@ -29,7 +29,7 @@ Cosmwasm commands with encrypted mnemonic
 
 ```bash
 # generate encrypted mnemonic
-cwtools script script/encrypt_mnemonic.js [mnemonic_file]
+cwtools script scripts/encrypt_mnemonic.js [mnemonic_file]
 
 # then put it into .env file then run
 cwtools wasm -h
