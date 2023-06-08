@@ -1,5 +1,5 @@
-// @ts-nocheck
 import codegen, { ContractFile } from '@cosmwasm/ts-codegen/packages/ts-codegen';
+import os from 'os';
 import * as fs from 'fs';
 import { basename, join, resolve } from 'path';
 import { File, PropertyDeclaration, TypescriptParser } from 'typescript-parser';
@@ -90,6 +90,7 @@ const fixTs = async (outPath: string, enabledReactQuery = false) => {
       for (let token of parsed.declarations) {
         if (!isPrivateType(token.name) && !typeData[token.name]) {
           // check props has private prop
+          // @ts-ignore
           if (token.properties?.some((prop: PropertyDeclaration) => isPrivateType(prop.type))) continue;
           typeData[token.name] = tsData.substring(token.start ?? 0, token.end);
         }
@@ -145,11 +146,17 @@ const fixTs = async (outPath: string, enabledReactQuery = false) => {
 };
 
 const genTypescripts = async (packages: string[], enabledReactQuery: boolean, output = 'build') => {
+  const cargoDir = join(os.homedir(), '.cargo');
+  const targetDir = join(cargoDir, 'target');
   const contracts = await Promise.all(
     packages.map(async (packagePath) => {
       const baseName = basename(packagePath);
       const schemaDir = join(packagePath, 'artifacts', 'schema');
-      if (!existsSync(schemaDir)) return false;
+
+      // make sure to build schema first time
+      if (!existsSync(schemaDir)) {
+        await buildSchemas([packagePath], targetDir);
+      }
 
       return {
         name: baseName.replace(/^.|_./g, (m) => m.slice(-1).toUpperCase()),
@@ -161,6 +168,7 @@ const genTypescripts = async (packages: string[], enabledReactQuery: boolean, ou
 };
 
 import { Argv } from 'yargs';
+import { buildSchemas } from '../common';
 export default async (yargs: Argv) => {
   const { argv } = yargs
     .usage('usage: $0 gents <paths...> [options]')
@@ -181,6 +189,7 @@ export default async (yargs: Argv) => {
     });
 
   const start = Date.now();
+  // @ts-ignore
   await genTypescripts(argv._.slice(1), argv.reactQuery, argv.output);
   console.log('✨ all done in', Date.now() - start, 'ms!');
 };

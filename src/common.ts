@@ -1,6 +1,13 @@
-import { spawn } from 'child_process';
+import { spawn, execFileSync } from 'child_process';
 import readlineSync from 'readline-sync';
 import crypto from 'crypto';
+import * as fs from 'fs';
+import { join } from 'path';
+
+const {
+  existsSync,
+  promises: { mkdir }
+} = fs;
 
 export const encrypt = (password: string, val: string) => {
   const hash = crypto.createHash('sha256').update(password).digest('hex');
@@ -32,4 +39,22 @@ export const spawnPromise = (cmd: string, args: readonly string[], currentDir?: 
 export const decryptMnemonic = (mnemonic: string) => {
   const password = readlineSync.question('enter passphrase:', { hideEchoBack: true });
   return decrypt(password, mnemonic);
+};
+
+export const buildSchemas = async (packages: string[], targetDir: string) => {
+  const res = await Promise.all(
+    packages.map(async (contractDir) => {
+      const binCmd = existsSync(join(contractDir, 'src', 'bin')) ? '--bin' : '--example';
+      const artifactDir = join(contractDir, 'artifacts');
+      if (!existsSync(artifactDir)) {
+        await mkdir(artifactDir);
+      }
+      return [binCmd, artifactDir];
+    })
+  );
+
+  // schema can not run in parallel
+  for (const [binCmd, artifactDir] of res) {
+    execFileSync('cargo', ['run', '-q', binCmd, 'schema', '--target-dir', targetDir], { cwd: artifactDir, env: process.env, stdio: 'inherit' });
+  }
 };

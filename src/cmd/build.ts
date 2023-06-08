@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { execFileSync } from 'child_process';
 import { watch } from 'chokidar';
 import * as fs from 'fs';
@@ -6,30 +5,12 @@ import os from 'os';
 import { basename, join, resolve } from 'path';
 import toml from 'toml';
 import { Argv } from 'yargs';
-import { spawnPromise } from '../common';
+import { buildSchemas, spawnPromise } from '../common';
 
 const {
   existsSync,
   promises: { mkdir, readFile, copyFile, rm, stat }
 } = fs;
-
-const buildSchemas = async (packages: string[], targetDir: string) => {
-  const res = await Promise.all(
-    packages.map(async (contractDir) => {
-      const binCmd = existsSync(join(contractDir, 'src', 'bin')) ? '--bin' : '--example';
-      const artifactDir = join(contractDir, 'artifacts');
-      if (!existsSync(artifactDir)) {
-        await mkdir(artifactDir);
-      }
-      return [binCmd, artifactDir];
-    })
-  );
-
-  // schema can not run in parallel
-  for (const [binCmd, artifactDir] of res) {
-    execFileSync('cargo', ['run', '-q', binCmd, 'schema', '--target-dir', targetDir], { cwd: artifactDir, env: process.env, stdio: 'inherit' });
-  }
-};
 
 const buildContract = async (contractDir: string, debug: boolean, output: string, targetDir: string, optimizeArgs: string[]) => {
   // name is extract from Cargo.toml
@@ -176,6 +157,7 @@ export default async (yargs: Argv) => {
     });
 
   const start = Date.now();
+  // @ts-ignore
   await buildContracts(argv._.slice(1), argv.debug, argv.schema, argv.watch, argv.output, argv.optimize.split(/\s+/));
   console.log('✨ all done in', Date.now() - start, 'ms!');
 };
