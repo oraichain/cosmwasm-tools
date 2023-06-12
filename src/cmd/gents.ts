@@ -131,7 +131,11 @@ const fixTs = async (outPath: string, enabledReactQuery = false) => {
     })
   );
 
-  await writeFile(join(outPath, 'types.ts'), Object.values(typeData).join('\n'));
+  const exportArr = Object.values(typeData);
+  // add export for @cosmjs/cosmwasm-stargate
+  exportArr.push('export { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";');
+
+  await writeFile(join(outPath, 'types.ts'), exportArr.join('\n'));
 
   const indexData = [];
   for (const className of classNames) {
