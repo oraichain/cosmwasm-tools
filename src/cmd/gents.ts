@@ -152,14 +152,18 @@ const fixTs = async (outPath: string, enabledReactQuery = false) => {
 const genTypescripts = async (packages: string[], enabledReactQuery: boolean, output = 'build') => {
   const cargoDir = join(os.homedir(), '.cargo');
   const targetDir = join(cargoDir, 'target');
+
+  // filter contract folder only
+  const contractDirs = filterContractDirs(packages);
+
   const contracts = await Promise.all(
-    packages.map(async (packagePath) => {
-      const baseName = basename(resolve(packagePath));
-      const schemaDir = join(packagePath, 'artifacts', 'schema');
+    contractDirs.map(async (contractDir) => {
+      const baseName = basename(contractDir);
+      const schemaDir = join(contractDir, 'artifacts', 'schema');
 
       // make sure to build schema first time
       if (!existsSync(schemaDir)) {
-        await buildSchemas([packagePath], targetDir);
+        await buildSchemas([contractDir], targetDir);
       }
 
       return {
@@ -172,7 +176,7 @@ const genTypescripts = async (packages: string[], enabledReactQuery: boolean, ou
 };
 
 import { Argv } from 'yargs';
-import { buildSchemas } from '../common';
+import { buildSchemas, filterContractDirs } from '../common';
 export default async (yargs: Argv) => {
   const { argv } = yargs
     .usage('usage: $0 gents <paths...> [options]')

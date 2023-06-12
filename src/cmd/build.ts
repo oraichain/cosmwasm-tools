@@ -5,7 +5,7 @@ import os from 'os';
 import { basename, join, resolve } from 'path';
 import toml from 'toml';
 import { Argv } from 'yargs';
-import { buildSchemas, spawnPromise } from '../common';
+import { buildSchemas, filterContractDirs, spawnPromise } from '../common';
 
 const {
   existsSync,
@@ -70,11 +70,7 @@ const buildContracts = async (packages: string[], debug: boolean, schema: boolea
   }
 
   // filter contract folder only
-  const contractDirs = packages
-    .filter((contractDir) => {
-      return existsSync(join(contractDir, 'Cargo.toml'));
-    })
-    .map((contractDir) => resolve(contractDir));
+  const contractDirs = filterContractDirs(packages);
 
   if (!contractDirs.length) return;
 

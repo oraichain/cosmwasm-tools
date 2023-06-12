@@ -2,7 +2,7 @@ import { spawn, execFileSync } from 'child_process';
 import readlineSync from 'readline-sync';
 import crypto from 'crypto';
 import * as fs from 'fs';
-import { join } from 'path';
+import { join, resolve } from 'path';
 
 const {
   existsSync,
@@ -54,4 +54,13 @@ export const buildSchemas = async (packages: string[], targetDir: string) => {
   for (const [binCmd, artifactDir] of res) {
     execFileSync('cargo', ['run', '-q', binCmd, 'schema', '--target-dir', targetDir], { cwd: artifactDir, env: process.env, stdio: 'inherit' });
   }
+};
+
+export const filterContractDirs = (packages: string[]) => {
+  // filter contract folder only
+  return packages
+    .filter((contractDir) => {
+      return existsSync(join(contractDir, 'Cargo.toml'));
+    })
+    .map((contractDir) => resolve(contractDir));
 };
