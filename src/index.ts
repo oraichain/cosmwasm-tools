@@ -9,7 +9,7 @@ import { version } from '../package.json';
 import buildCmd from './cmd/build';
 import gentsCmd from './cmd/gents';
 import wasmCmd from './cmd/wasm';
-import { encrypt } from './common';
+import { decryptMnemonic, encrypt } from './common';
 
 yargs(hideBin(process.argv))
   .scriptName('cwtools')
@@ -32,6 +32,15 @@ yargs(hideBin(process.argv))
     const mnemonic = (argv?._[1] ? require('fs').readFileSync(argv._[1]).toString() : readlineSync.question('enter mnemonic:', { hideEchoBack: true })).trim();
     const password = readlineSync.question('enter passphrase:', { hideEchoBack: true });
     console.log(encrypt(password, mnemonic));
+  })
+  .command('decrypt', 'decrypt mnemonic from input', async (yargs) => {
+    const { argv } = yargs.usage('usage: $0 decrypt input').positional('input', {
+      describe: 'an encrypted text',
+      type: 'string'
+    });
+    // @ts-ignore
+    const encryptedMnemonic = argv._[1];
+    console.log(decryptMnemonic(encryptedMnemonic));
   })
   .command('script', 'run custom script', async (yargs) => {
     const { argv } = yargs.usage('usage: $0 script path').positional('path', {

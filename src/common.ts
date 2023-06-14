@@ -33,9 +33,9 @@ export const spawnPromise = (cmd: string, args: readonly string[], currentDir?: 
   });
 };
 
-export const decryptMnemonic = (mnemonic: string) => {
+export const decryptMnemonic = (encryptedMnemonic: string) => {
   const password = readlineSync.question('enter passphrase:', { hideEchoBack: true });
-  return decrypt(password, mnemonic);
+  return decrypt(password, encryptedMnemonic);
 };
 
 export const buildSchemas = async (packages: string[], targetDir: string) => {
