@@ -1,8 +1,10 @@
-#!/usr/bin/env node
+#!/usr/bin/env node --no-warnings
 
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import readlineSync from 'readline-sync';
+import ts from 'typescript';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { version } from '../package.json';
@@ -48,7 +50,10 @@ yargs(hideBin(process.argv))
       type: 'string'
     });
     // @ts-ignore
-    (__non_webpack_require__ ?? require)(path.resolve(argv._[1]))(argv);
+    const scriptFile = path.resolve(argv._[1]);
+    const parsed = ts.transpile(fs.readFileSync(scriptFile).toString());
+    let runnable = eval(parsed);
+    runnable(argv);
   })
   .option('help', {
     alias: 'h',

@@ -3,6 +3,8 @@ import os from 'os';
 import * as fs from 'fs';
 import { basename, join, resolve } from 'path';
 import { File, PropertyDeclaration, TypescriptParser } from 'typescript-parser';
+import { Argv } from 'yargs';
+import { buildSchemas, filterContractDirs } from '../common';
 
 const {
   existsSync,
@@ -175,8 +177,6 @@ const genTypescripts = async (packages: string[], enabledReactQuery: boolean, ou
   await genTS(contracts.filter(Boolean) as ContractFile[], output, enabledReactQuery);
 };
 
-import { Argv } from 'yargs';
-import { buildSchemas, filterContractDirs } from '../common';
 export default async (yargs: Argv) => {
   const { argv } = yargs
     .usage('usage: $0 gents <paths...> [options]')
