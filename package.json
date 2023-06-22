@@ -1,6 +1,6 @@
 {
   "name": "@oraichain/cwtools",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "license": "MIT",
   "main": "dist/index.js",
   "bin": "dist/index.js",
@@ -38,7 +38,6 @@
   },
   "devDependencies": {
     "@types/readline-sync": "^1.4.4",
-    "@types/shelljs": "^0.8.12",
     "@types/yargs": "^17.0.24",
     "@vercel/ncc": "=0.34.0",
     "ts-node": "^10.9.1",
