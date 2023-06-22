@@ -52,8 +52,7 @@ yargs(hideBin(process.argv))
     // @ts-ignore
     const scriptFile = path.resolve(argv._[1]);
     const parsed = ts.transpile(fs.readFileSync(scriptFile).toString());
-    let runnable = eval(parsed);
-    runnable(argv);
+    eval(parsed)(argv);
   })
   .option('help', {
     alias: 'h',

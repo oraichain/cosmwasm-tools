@@ -15,7 +15,7 @@ Commands:
   cwtools gents   generate TypeScript classes for the contract folders
   cwtools build   build a list of contract folders
   cwtools wasm    wasm commands
-  cwtools script  run custom script
+  cwtools script  run custom typescript file
 
 Options:
   -h, --help        Show help                                          [boolean]
