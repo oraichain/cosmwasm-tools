@@ -37,12 +37,13 @@ const buildContract = async (contractDir: string, debug: boolean, output: string
     await copyFile(join(targetDir, 'wasm32-unknown-unknown', 'debug', buildName + '.wasm'), wasmFile);
   } else {
     await spawnPromise('cargo', ['build', '-q', '--release', '--lib', '--target-dir', targetDir, '--target', 'wasm32-unknown-unknown'], contractDir, {
-      RUSTFLAGS: '-C link-arg=-s'
+      RUSTFLAGS: '-C link-arg=-s',
+      CARGO_INCREMENTAL: '1'
     });
 
     // wasm-optimize on all results
     console.log(`Optimizing ${wasmFile}`);
-    await spawnPromise('wasm-opt', [...optimizeArgs, '--disable-sign-ext', join(targetDir, 'wasm32-unknown-unknown', 'release', buildName + '.wasm'), '-o', wasmFile], contractDir);
+    await spawnPromise('wasm-opt', [...optimizeArgs, '--signext-lowering', join(targetDir, 'wasm32-unknown-unknown', 'release', buildName + '.wasm'), '-o', wasmFile], contractDir);
   }
 
   // show content
