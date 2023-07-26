@@ -38,7 +38,7 @@ const buildContract = async (contractDir: string, debug: boolean, output: string
   } else {
     await spawnPromise('cargo', ['build', '-q', '--release', '--lib', '--target-dir', targetDir, '--target', 'wasm32-unknown-unknown'], contractDir, {
       RUSTFLAGS: '-C link-arg=-s',
-      CARGO_INCREMENTAL: '1'
+      CARGO_INCREMENTAL: process.env.RUSTC_WRAPPER === 'sccache' ? '0' : '1'
     });
 
     // wasm-optimize on all results
@@ -78,13 +78,14 @@ const buildContracts = async (packages: string[], debug: boolean, schema: boolea
   // make cargo load crates faster
   process.env.CARGO_REGISTRIES_CRATES_IO_PROTOCOL = 'sparse';
 
-  const sccacheDir = join(cargoDir, 'bin', 'sccache');
-  if (existsSync(sccacheDir)) {
-    process.env.RUSTC_WRAPPER = 'sccache';
-    console.log('Info: sccache stats before build');
-    execFileSync('sccache', ['-s'], { stdio: 'inherit' });
-  } else {
-    console.log("Run: 'cargo install sccache' for faster build");
+  if (process.env.RUSTC_WRAPPER === 'sccache') {
+    const sccacheDir = join(cargoDir, 'bin', 'sccache');
+    if (existsSync(sccacheDir)) {
+      console.log('Info: sccache stats before build');
+      execFileSync('sccache', ['-s'], { stdio: 'inherit' });
+    } else {
+      console.log("Run: 'cargo install sccache' for faster build");
+    }
   }
 
   const outputDir = output ? resolve(output) : output;
