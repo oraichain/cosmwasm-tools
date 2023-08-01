@@ -22,7 +22,7 @@ export const upload = async (argv) => {
 
   try {
     // console.log('argv fees: ', argv);
-    let res = await client.upload(firstAccount.address, wasmBody, 'auto');
+    let res = await client.upload(firstAccount.address, wasmBody, 'auto', argv.memo);
     console.log(res.codeId);
     return res.codeId;
   } catch (error) {
@@ -38,6 +38,9 @@ export default async (yargs: Argv) => {
     })
     .option('fees', {
       describe: 'the transaction fees',
+      type: 'string'
+    }).option('memo', {
+      describe: 'optional memo',
       type: 'string'
     });
 
