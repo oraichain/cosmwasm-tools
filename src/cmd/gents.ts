@@ -46,6 +46,7 @@ const genTS = async (contracts: Array<ContractFile>, tsFolder: string, enabledRe
   });
 
   await fixTs(outPath, enabledReactQuery);
+  return { outPath };
 };
 
 const isPrivateType = (type: string) => {
@@ -151,7 +152,7 @@ const fixTs = async (outPath: string, enabledReactQuery = false) => {
   await writeFile(join(outPath, 'index.ts'), indexData.join('\n'));
 };
 
-const genTypescripts = async (packages: string[], enabledReactQuery: boolean, output = 'build') => {
+export const genTypescripts = async (packages: string[], enabledReactQuery: boolean, output = 'build') => {
   const cargoDir = join(os.homedir(), '.cargo');
   const targetDir = join(cargoDir, 'target');
 
@@ -174,7 +175,7 @@ const genTypescripts = async (packages: string[], enabledReactQuery: boolean, ou
       };
     })
   );
-  await genTS(contracts.filter(Boolean) as ContractFile[], output, enabledReactQuery);
+  return await genTS(contracts.filter(Boolean) as ContractFile[], output, enabledReactQuery);
 };
 
 export default async (yargs: Argv) => {

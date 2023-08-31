@@ -10,6 +10,7 @@ import { hideBin } from 'yargs/helpers';
 import { version } from '../package.json';
 import buildCmd from './cmd/build';
 import gentsCmd from './cmd/gents';
+import genjsCmd from './cmd/genjs';
 import wasmCmd from './cmd/wasm';
 import { decryptMnemonic, encrypt } from './common';
 
@@ -22,6 +23,7 @@ yargs(hideBin(process.argv))
   .default('env', '.env')
   // all commands
   .command('gents', 'generate TypeScript classes for the contract folders', gentsCmd)
+  .command('genjs', 'generate JavaScript classes for the contract folders', genjsCmd)
   .command('build', 'build a list of contract folders', buildCmd)
   .command('wasm', 'wasm commands', wasmCmd)
   .command('encrypt', 'encrypt mnemonic from file or input', async (yargs) => {
