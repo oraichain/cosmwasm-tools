@@ -1,6 +1,6 @@
 {
   "name": "@oraichain/cwtools",
-  "version": "0.0.21",
+  "version": "0.0.22",
   "license": "MIT",
   "main": "dist/index.js",
   "bin": "dist/index.js",
@@ -13,7 +13,7 @@
     "dist/index.js"
   ],
   "scripts": {
-    "preinstall": "npm i -g wasm-opt",
+    "preinstall": "yarn global add wasm-opt",
     "deploy": "yarn publish --access public . --patch",
     "start": "yarn -s ts-node src/index.ts",
     "build": "ncc build src/index.ts --no-source-map-register -t -m",
@@ -24,11 +24,11 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@cosmjs/cosmwasm-stargate": "^0.29.5",
-    "@cosmjs/crypto": "^0.29.5",
-    "@cosmjs/math": "^0.29.5",
-    "@cosmjs/proto-signing": "^0.29.5",
-    "@cosmjs/stargate": "^0.29.5",
+    "@cosmjs/cosmwasm-stargate": "^0.31.1",
+    "@cosmjs/crypto": "^0.31.1",
+    "@cosmjs/math": "^0.31.1",
+    "@cosmjs/proto-signing": "^0.31.1",
+    "@cosmjs/stargate": "^0.31.1",
     "@cosmwasm/ts-codegen": "https://github.com/oraichain/ts-codegen.git",
     "@types/readline-sync": "^1.4.4",
     "@types/yargs": "^17.0.24",
@@ -41,5 +41,8 @@
     "typescript": "^5.0.3",
     "typescript-parser": "^2.6.1",
     "yargs": "^17.7.2"
+  },
+  "resolutions": {
+    "typescript": "^5.0.3"
   }
 }
