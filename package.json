@@ -13,7 +13,7 @@
     "dist/index.js"
   ],
   "scripts": {
-    "preinstall": "yarn global add wasm-opt",
+    "preinstall": "npm i -g wasm-opt",
     "deploy": "yarn publish --access public . --patch",
     "start": "yarn -s ts-node src/index.ts",
     "build": "ncc build src/index.ts --no-source-map-register -t -m",
