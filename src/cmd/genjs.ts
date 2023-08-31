@@ -27,7 +27,24 @@ export default async (yargs: Argv) => {
   // @ts-ignore
   const { outPath } = await genTypescripts(argv._.slice(1), argv.reactQuery, argv.output);
   const files = fs.readdirSync(outPath).map((filename) => path.join(outPath, filename));
-  const program = ts.createProgram([path.join(outPath, 'index.ts')], { skipLibCheck: true, declaration: true, sourceMap: true, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 });
+  const program = ts.createProgram([path.join(outPath, 'index.ts')], {
+    skipLibCheck: true,
+    declaration: true,
+    sourceMap: true,
+    module: ts.ModuleKind.CommonJS,
+    target: ts.ScriptTarget.ES2020,
+    lib: ['ES2020', 'dom'],
+    moduleResolution: ts.ModuleResolutionKind.NodeNext,
+    experimentalDecorators: true,
+    emitDecoratorMetadata: true,
+    typeRoots: ['node_modules/@types'],
+
+    allowJs: true,
+    esModuleInterop: true,
+    baseUrl: '.',
+    outDir: outPath,
+    rootDir: outPath
+  });
   program.emit();
   files.map(fs.promises.unlink);
 
