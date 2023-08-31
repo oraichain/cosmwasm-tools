@@ -1,6 +1,7 @@
 import { Argv } from 'yargs';
 import { genTypescripts } from './gents';
 import fs from 'fs';
+import ts from 'typescript';
 import path from 'path';
 
 export default async (yargs: Argv) => {
@@ -26,9 +27,9 @@ export default async (yargs: Argv) => {
   // @ts-ignore
   const { outPath } = await genTypescripts(argv._.slice(1), argv.reactQuery, argv.output);
   const files = fs.readdirSync(outPath).map((filename) => path.join(outPath, filename));
-  process.argv = process.argv.slice(0, 2);
-  process.argv.push(...[path.join(outPath, 'index.ts'), '--declaration', '--skipLibCheck', '--sourceMap', '--rootDir', outPath, '--outDir', outPath, '--module', 'commonjs', '--moduleResolution', 'node']);
-  require('typescript/lib/tsc.js');
-  files.forEach(fs.promises.unlink);
+  const program = ts.createProgram([path.join(outPath, 'index.ts')], { skipLibCheck: true, declaration: true, sourceMap: true, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 });
+  program.emit();
+  files.map(fs.promises.unlink);
+
   console.log('✨ all done in', Date.now() - start, 'ms!');
 };
