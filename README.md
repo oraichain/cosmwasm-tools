@@ -12,6 +12,7 @@ Type `cwtools -h`
 cwtools [command]
 
 Commands:
+  cwtools genjs   generate JavaScript classes for the contract folders
   cwtools gents   generate TypeScript classes for the contract folders
   cwtools build   build a list of contract folders
   cwtools wasm    wasm commands
