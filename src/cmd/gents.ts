@@ -50,7 +50,7 @@ const genTS = async (contracts: Array<ContractFile>, tsFolder: string, enabledRe
 };
 
 const isPrivateType = (type: string) => {
-  return type.indexOf('Response') !== -1 || type === 'InstantiateMsg' || type === 'ExecuteMsg' || type === 'QueryMsg' || type === 'MigrateMsg';
+  return type.indexOf('Response') !== -1 || type === 'InstantiateMsg' || type === 'ExecuteMsg' || type === 'QueryMsg' || type === 'MigrateMsg' || type === 'Config';
 };
 
 const fixImport = async (clientName: string, ext: string, typeData: { [key: string]: string }, outPath: string) => {
