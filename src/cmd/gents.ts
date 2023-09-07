@@ -49,8 +49,9 @@ const genTS = async (contracts: Array<ContractFile>, tsFolder: string, enabledRe
   return { outPath };
 };
 
+const publicTypes = Object.fromEntries(['Uint128', 'Binary', 'Addr', 'Coin', 'Coins', 'Timestamp', 'Uint64', 'Null', 'Decimal', 'Boolean'].map((k) => [k, true]));
 const isPrivateType = (type: string) => {
-  return type.indexOf('Response') !== -1 || type === 'InstantiateMsg' || type === 'ExecuteMsg' || type === 'QueryMsg' || type === 'MigrateMsg' || type === 'Config';
+  return !publicTypes[type];
 };
 
 const fixImport = async (clientName: string, ext: string, typeData: { [key: string]: string }, outPath: string) => {
