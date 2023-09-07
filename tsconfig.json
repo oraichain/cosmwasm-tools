@@ -10,12 +10,5 @@
     },
     "exclude": [
         "node_modules"
-    ],
-    "ts-node": {
-        "transpileOnly": true,
-        "esm": true,
-        "ignore": [
-            "node_modules/(?!@cosmwasm)"
-        ]
-    }
+    ]
 }
