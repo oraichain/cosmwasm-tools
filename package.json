@@ -1,6 +1,6 @@
 {
   "name": "@oraichain/cwtools",
-  "version": "0.0.29",
+  "version": "0.0.30",
   "license": "MIT",
   "main": "dist/index.js",
   "bin": "dist/index.js",
@@ -32,9 +32,9 @@
     "@cosmwasm/ts-codegen": "https://github.com/oraichain/ts-codegen.git",
     "@types/readline-sync": "^1.4.4",
     "@types/yargs": "^17.0.24",
-    "esbuild": "^0.19.2",
     "chokidar": "^3.5.3",
     "dotenv": "^16.0.3",
+    "esbuild": "^0.19.2",
     "readline-sync": "^1.4.10",
     "toml": "^3.0.0",
     "typescript": "^5.0.3",
