@@ -106,9 +106,6 @@ const publicTypes = Object.fromEntries(
     'TransactionInfo'
   ].map((k) => [k, true])
 );
-const isPublicType = (type: string) => {
-  return !publicTypes[type];
-};
 
 const fixImport = async (clientName: string, ext: string, typeData: { [key: string]: string }, outPath: string) => {
   const clientFile = join(outPath, `${clientName}.${ext}`);
@@ -148,7 +145,7 @@ const fixTs = async (outPath: string, enabledReactQuery = false) => {
       parsedData[dir] = parsed;
 
       for (let token of parsed.declarations) {
-        if (isPublicType(token.name) && !typeData[token.name]) {
+        if (publicTypes[token.name] && !typeData[token.name]) {
           typeData[token.name] = tsData.substring(token.start ?? 0, token.end);
         }
       }
