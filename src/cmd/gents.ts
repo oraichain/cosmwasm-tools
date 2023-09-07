@@ -49,8 +49,61 @@ const genTS = async (contracts: Array<ContractFile>, tsFolder: string, enabledRe
   return { outPath };
 };
 
+// extract from cosmos_std
 const publicTypes = Object.fromEntries(
-  ['Uint128', 'Binary', 'Addr', 'Coin', 'Coins', 'Timestamp', 'Uint64', 'Null', 'Decimal', 'Boolean', 'CosmosMsgForEmpty', 'BankMsg', 'StakingMsg', 'DistributionMsg', 'IbcMsg', 'WasmMsg', 'GovMsg'].map((k) => [k, true])
+  [
+    'Binary',
+    'Addr',
+    'Coin',
+    'Coins',
+    'Timestamp',
+    'VoteOption',
+    'Null',
+    'Boolean',
+    'CosmosMsgForEmpty',
+    'BankMsg',
+    'StakingMsg',
+    'DistributionMsg',
+    'WasmMsg',
+    'GovMsg',
+    'HexBinary',
+    'Ibc3ChannelOpenResponse',
+    'IbcAcknowledgement',
+    'IbcBasicResponse',
+    'IbcChannel',
+    'IbcChannelCloseMsg',
+    'IbcChannelConnectMsg',
+    'IbcChannelOpenMsg',
+    'IbcChannelOpenResponse',
+    'IbcEndpoint',
+    'IbcMsg',
+    'IbcOrder',
+    'IbcPacket',
+    'IbcPacketAckMsg',
+    'IbcPacketReceiveMsg',
+    'IbcPacketTimeoutMsg',
+    'IbcReceiveResponse',
+    'IbcTimeout',
+    'IbcTimeoutBlock',
+    'Decimal',
+    'Decimal256',
+    'Decimal256RangeExceeded',
+    'DecimalRangeExceeded',
+    'Fraction',
+    'Int128',
+    'Int256',
+    'Int512',
+    'Int64',
+    'Isqrt',
+    'Uint128',
+    'Uint256',
+    'Uint512',
+    'Uint64',
+    'BlockInfo',
+    'ContractInfo',
+    'MessageInfo',
+    'TransactionInfo'
+  ].map((k) => [k, true])
 );
 const isPrivateType = (type: string) => {
   return !publicTypes[type];
