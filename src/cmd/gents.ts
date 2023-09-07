@@ -57,6 +57,7 @@ const publicTypes = Object.fromEntries(
     'Coin',
     'Coins',
     'Timestamp',
+    'Empty',
     'VoteOption',
     'Null',
     'Boolean',
@@ -105,7 +106,7 @@ const publicTypes = Object.fromEntries(
     'TransactionInfo'
   ].map((k) => [k, true])
 );
-const isPrivateType = (type: string) => {
+const isPublicType = (type: string) => {
   return !publicTypes[type];
 };
 
@@ -147,10 +148,7 @@ const fixTs = async (outPath: string, enabledReactQuery = false) => {
       parsedData[dir] = parsed;
 
       for (let token of parsed.declarations) {
-        if (!isPrivateType(token.name) && !typeData[token.name]) {
-          // check props has private prop
-          // @ts-ignore
-          if (token.properties?.some((prop: PropertyDeclaration) => isPrivateType(prop.type))) continue;
+        if (isPublicType(token.name) && !typeData[token.name]) {
           typeData[token.name] = tsData.substring(token.start ?? 0, token.end);
         }
       }
