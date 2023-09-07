@@ -49,7 +49,9 @@ const genTS = async (contracts: Array<ContractFile>, tsFolder: string, enabledRe
   return { outPath };
 };
 
-const publicTypes = Object.fromEntries(['Uint128', 'Binary', 'Addr', 'Coin', 'Coins', 'Timestamp', 'Uint64', 'Null', 'Decimal', 'Boolean'].map((k) => [k, true]));
+const publicTypes = Object.fromEntries(
+  ['Uint128', 'Binary', 'Addr', 'Coin', 'Coins', 'Timestamp', 'Uint64', 'Null', 'Decimal', 'Boolean', 'CosmosMsgForEmpty', 'BankMsg', 'StakingMsg', 'DistributionMsg', 'IbcMsg', 'WasmMsg', 'GovMsg'].map((k) => [k, true])
+);
 const isPrivateType = (type: string) => {
   return !publicTypes[type];
 };
