@@ -1,6 +1,6 @@
 {
   "name": "@oraichain/cwtools",
-  "version": "0.0.31",
+  "version": "0.0.32",
   "license": "MIT",
   "main": "dist/index.js",
   "bin": "dist/index.js",
@@ -16,8 +16,7 @@
     "preinstall": "npm i -g wasm-opt",
     "deploy": "yarn publish --access public . --patch",
     "start": "node dist",
-    "build": "esbuild src/index.ts  --bundle --minify --platform=node  --external:fsevents --log-level=error --outfile=dist/index.js",
-    "postinstall": "cd node_modules/@cosmwasm/ts-codegen && yarn && yarn build"
+    "build": "esbuild src/index.ts  --bundle --minify --platform=node  --external:fsevents --log-level=error --outfile=dist/index.js"
   },
   "engines": {
     "node": ">=16"
@@ -29,7 +28,7 @@
     "@cosmjs/math": "^0.31.1",
     "@cosmjs/proto-signing": "^0.31.1",
     "@cosmjs/stargate": "^0.31.1",
-    "@cosmwasm/ts-codegen": "https://github.com/oraichain/ts-codegen.git",
+    "@oraichain/ts-codegen": "^0.35.6",
     "@types/readline-sync": "^1.4.4",
     "@types/yargs": "^17.0.24",
     "chokidar": "^3.5.3",
