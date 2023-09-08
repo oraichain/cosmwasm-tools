@@ -1,4 +1,4 @@
-import codegen, { ContractFile } from '@cosmwasm/ts-codegen/packages/ts-codegen';
+import codegen, { ContractFile } from '@oraichain/ts-codegen';
 import os from 'os';
 import * as fs from 'fs';
 import { basename, join, resolve } from 'path';
@@ -28,7 +28,8 @@ const genTS = async (contracts: Array<ContractFile>, tsFolder: string, enabledRe
         enabled: true
       },
       client: {
-        enabled: true
+        enabled: true,
+        queryPrefixOnConflict: 'get_'
       },
       reactQuery: {
         enabled: enabledReactQuery,
