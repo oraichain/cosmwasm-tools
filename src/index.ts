@@ -12,7 +12,7 @@ import buildCmd from './cmd/build';
 import gentsCmd from './cmd/gents';
 import genjsCmd from './cmd/genjs';
 import wasmCmd from './cmd/wasm';
-import { decryptMnemonic, encrypt } from './common';
+import * as common from './common';
 
 yargs(hideBin(process.argv))
   .scriptName('cwtools')
@@ -35,7 +35,7 @@ yargs(hideBin(process.argv))
     // @ts-ignore
     const mnemonic = (argv?._[1] ? require('fs').readFileSync(argv._[1]).toString() : readlineSync.question('enter mnemonic:', { hideEchoBack: true })).trim();
     const password = readlineSync.question('enter passphrase:', { hideEchoBack: true });
-    console.log(encrypt(password, mnemonic));
+    console.log(common.encrypt(password, mnemonic));
   })
   .command('decrypt', 'decrypt mnemonic from input', async (yargs) => {
     const { argv } = yargs.usage('usage: $0 decrypt input').positional('input', {
@@ -44,7 +44,7 @@ yargs(hideBin(process.argv))
     });
     // @ts-ignore
     const encryptedMnemonic = argv._[1];
-    console.log(decryptMnemonic(encryptedMnemonic));
+    console.log(common.decryptMnemonic(encryptedMnemonic));
   })
   .command('script', 'run custom script', async (yargs) => {
     const { argv } = yargs.usage('usage: $0 script path').positional('path', {
@@ -54,7 +54,7 @@ yargs(hideBin(process.argv))
     // @ts-ignore
     const scriptFile = path.resolve(argv._[1]);
     const parsed = ts.transpile(fs.readFileSync(scriptFile).toString());
-    eval(parsed)(argv);
+    eval(parsed)(argv, common);
   })
   .option('help', {
     alias: 'h',
