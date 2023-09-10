@@ -54,8 +54,6 @@ yargs(hideBin(process.argv))
     // @ts-ignore
     const scriptFile = path.resolve(argv._[1]);
     const parsed = ts.transpile(fs.readFileSync(scriptFile).toString());
-    // change NODE_PATH to current running dir
-    process.env.NODE_PATH = path.resolve(process.cwd(), 'node_modules');
     eval(parsed)(argv, common);
   })
   .option('help', {
