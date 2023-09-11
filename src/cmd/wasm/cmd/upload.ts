@@ -16,8 +16,7 @@ export const upload = async (argv) => {
   });
   const [firstAccount] = await wallet.getAccounts();
   const client = await cosmwasm.SigningCosmWasmClient.connectWithSigner(process.env.RPC_URL, wallet, {
-    gasPrice: GasPrice.fromString(`${process.env.GAS_PRICES}${prefix}`),
-    prefix
+    gasPrice: GasPrice.fromString(`${process.env.GAS_PRICES}${prefix}`)
   });
 
   try {
@@ -39,7 +38,8 @@ export default async (yargs: Argv) => {
     .option('fees', {
       describe: 'the transaction fees',
       type: 'string'
-    }).option('memo', {
+    })
+    .option('memo', {
       describe: 'optional memo',
       type: 'string'
     });
