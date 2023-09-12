@@ -32,19 +32,15 @@ const buildContract = async (contractDir: string, debug: boolean, output: string
   }
   // rm old file to clear cache when displaying size
   await rm(wasmFile, { force: true });
-
-  // using build release for both debug and release, only different is using wasm-opt for release, to save disk space
-  await spawnPromise(
-    'cargo',
-    ['build', '-q', '--release', '--lib', '--target-dir', targetDir, '--target', 'wasm32-unknown-unknown'],
-    contractDir,
-    !debug && {
+  if (debug) {
+    await spawnPromise('cargo', ['build', '-q', '--release', '--lib', '--target-dir', targetDir, '--target', 'wasm32-unknown-unknown'], contractDir);
+    await copyFile(join(targetDir, 'wasm32-unknown-unknown', 'debug', buildName + '.wasm'), wasmFile);
+  } else {
+    await spawnPromise('cargo', ['build', '-q', '--release', '--lib', '--target-dir', targetDir, '--target', 'wasm32-unknown-unknown'], contractDir, {
       RUSTFLAGS: '-C link-arg=-s',
       CARGO_INCREMENTAL: process.env.RUSTC_WRAPPER === 'sccache' ? '0' : '1'
-    }
-  );
+    });
 
-  if (!debug) {
     // wasm-optimize on all results
     console.log(`Optimizing ${wasmFile}`);
     await spawnPromise('wasm-opt', [...optimizeArgs, '--signext-lowering', join(targetDir, 'wasm32-unknown-unknown', 'release', buildName + '.wasm'), '-o', wasmFile], contractDir);
