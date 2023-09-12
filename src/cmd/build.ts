@@ -34,7 +34,7 @@ const buildContract = async (contractDir: string, debug: boolean, output: string
   await rm(wasmFile, { force: true });
   if (debug) {
     await spawnPromise('cargo', ['build', '-q', '--release', '--lib', '--target-dir', targetDir, '--target', 'wasm32-unknown-unknown'], contractDir);
-    await copyFile(join(targetDir, 'wasm32-unknown-unknown', 'debug', buildName + '.wasm'), wasmFile);
+    await copyFile(join(targetDir, 'wasm32-unknown-unknown', 'release', buildName + '.wasm'), wasmFile);
   } else {
     await spawnPromise('cargo', ['build', '-q', '--release', '--lib', '--target-dir', targetDir, '--target', 'wasm32-unknown-unknown'], contractDir, {
       RUSTFLAGS: '-C link-arg=-s',
