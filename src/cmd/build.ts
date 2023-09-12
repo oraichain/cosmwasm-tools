@@ -32,16 +32,16 @@ const buildContract = async (contractDir: string, debug: boolean, output: string
   }
   // rm old file to clear cache when displaying size
   await rm(wasmFile, { force: true });
+  const options = {
+    RUSTFLAGS: '-C link-arg=-s',
+    CARGO_INCREMENTAL: process.env.RUSTC_WRAPPER === 'sccache' ? '0' : '1'
+  };
   if (debug) {
-    await spawnPromise('cargo', ['build', '-q', '--release', '--lib', '--target-dir', targetDir, '--target', 'wasm32-unknown-unknown'], contractDir);
-    await copyFile(join(targetDir, 'wasm32-unknown-unknown', 'release', buildName + '.wasm'), wasmFile);
+    await spawnPromise('cargo', ['build', '-q', '--lib', '--target-dir', targetDir, '--target', 'wasm32-unknown-unknown'], contractDir, options);
+    console.log(`Optimizing ${wasmFile}`);
+    await spawnPromise('wasm-opt', ['-O1', '--signext-lowering', join(targetDir, 'wasm32-unknown-unknown', 'debug', buildName + '.wasm'), '-o', wasmFile], contractDir);
   } else {
-    await spawnPromise('cargo', ['build', '-q', '--release', '--lib', '--target-dir', targetDir, '--target', 'wasm32-unknown-unknown'], contractDir, {
-      RUSTFLAGS: '-C link-arg=-s',
-      CARGO_INCREMENTAL: process.env.RUSTC_WRAPPER === 'sccache' ? '0' : '1'
-    });
-
-    // wasm-optimize on all results
+    await spawnPromise('cargo', ['build', '-q', '--release', '--lib', '--target-dir', targetDir, '--target', 'wasm32-unknown-unknown'], contractDir, options);
     console.log(`Optimizing ${wasmFile}`);
     await spawnPromise('wasm-opt', [...optimizeArgs, '--signext-lowering', join(targetDir, 'wasm32-unknown-unknown', 'release', buildName + '.wasm'), '-o', wasmFile], contractDir);
   }
