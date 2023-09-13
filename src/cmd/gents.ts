@@ -2,7 +2,7 @@ import codegen, { ContractFile } from '@oraichain/ts-codegen';
 import os from 'os';
 import * as fs from 'fs';
 import { basename, join, resolve } from 'path';
-import { File, PropertyDeclaration, TypescriptParser } from 'typescript-parser';
+import { ClassLikeDeclaration, File, TypescriptParser } from 'typescript-parser';
 import { Argv } from 'yargs';
 import { buildSchemas, filterContractDirs } from '../common';
 
@@ -100,64 +100,6 @@ const genTS = async (contracts: Array<ContractFile>, tsFolder: string, enabledRe
   return { outPath };
 };
 
-// extract from cosmos_std
-const publicTypes = Object.fromEntries(
-  [
-    'Binary',
-    'Addr',
-    'Coin',
-    'Coins',
-    'Timestamp',
-    'Empty',
-    'VoteOption',
-    'Null',
-    'Boolean',
-    'CosmosMsgForEmpty',
-    'BankMsg',
-    'StakingMsg',
-    'DistributionMsg',
-    'WasmMsg',
-    'GovMsg',
-    'HexBinary',
-    'Ibc3ChannelOpenResponse',
-    'IbcAcknowledgement',
-    'IbcBasicResponse',
-    'IbcChannel',
-    'IbcChannelCloseMsg',
-    'IbcChannelConnectMsg',
-    'IbcChannelOpenMsg',
-    'IbcChannelOpenResponse',
-    'IbcEndpoint',
-    'IbcMsg',
-    'IbcOrder',
-    'IbcPacket',
-    'IbcPacketAckMsg',
-    'IbcPacketReceiveMsg',
-    'IbcPacketTimeoutMsg',
-    'IbcReceiveResponse',
-    'IbcTimeout',
-    'IbcTimeoutBlock',
-    'Decimal',
-    'Decimal256',
-    'Decimal256RangeExceeded',
-    'DecimalRangeExceeded',
-    'Fraction',
-    'Int128',
-    'Int256',
-    'Int512',
-    'Int64',
-    'Isqrt',
-    'Uint128',
-    'Uint256',
-    'Uint512',
-    'Uint64',
-    'BlockInfo',
-    'ContractInfo',
-    'MessageInfo',
-    'TransactionInfo'
-  ].map((k) => [k, true])
-);
-
 const fixNested = async (clientName: string, ext: string, nestedResponses: { [key: string]: [string, string, string[]] }, outPath: string) => {
   const clientFile = join(outPath, `${clientName}.${ext}`);
   let clientData = (await readFile(clientFile)).toString();
@@ -206,33 +148,52 @@ const fixImport = async (clientName: string, ext: string, typeData: { [key: stri
   );
 };
 
+const privateMsgsMap = Object.fromEntries(['MigrateMsg', 'QueryMsg', 'ExecuteMsg', 'HandleMsg', 'InitMsg', 'InstantiateMsg'].map((c) => [c, true]));
+
+// if declaration appears at least twice then move it to global
+const getIdentity = (declaration: ClassLikeDeclaration): string => {
+  if (declaration.properties.length === 0) return '{}';
+  return declaration.properties
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((p) => `${p.name}:${p.type}`)
+    .join(',');
+};
+
 const fixTs = async (outPath: string, enabledReactQuery = false) => {
   const parser = new TypescriptParser();
   const typeExt = '.types.ts';
   const typeData: { [key: string]: string } = {};
-  const parsedData: { [key: string]: File } = {};
+  const parsedData: { [key: string]: [File, string, string] } = {};
   const dirs = (await readdir(outPath)).filter((dir) => dir.endsWith(typeExt));
 
-  await Promise.all(
-    dirs.map(async (dir) => {
-      const tsFile = join(outPath, dir);
-      const tsData = (await readFile(tsFile)).toString();
-      const parsed = await parser.parseSource(tsData);
-      parsedData[dir] = parsed;
+  const typeCheck: { [key: string]: number } = {};
+  for (const dir of dirs) {
+    const tsFile = join(outPath, dir);
+    const tsData = fs.readFileSync(tsFile).toString();
+    const parsed = await parser.parseSource(tsData);
+    parsedData[dir] = [parsed, tsData, tsFile];
+    // check public type
+    for (let token of parsed.declarations) {
+      if (privateMsgsMap[token.name]) continue;
+      const identity = 'properties' in token ? getIdentity(token as ClassLikeDeclaration) : tsData.substring(token.start ?? 0, token.end).replace(/[\s\n\t]+/g, ' ');
+      typeCheck[identity] = (typeCheck[identity] ?? 0) + 1;
+    }
+  }
 
-      for (let token of parsed.declarations) {
-        if (publicTypes[token.name] && !typeData[token.name]) {
-          typeData[token.name] = tsData.substring(token.start ?? 0, token.end);
-        }
+  for (const [parsed, tsData] of Object.values(parsedData)) {
+    for (let token of parsed.declarations) {
+      // already added
+      if (privateMsgsMap[token.name] || typeData[token.name]) continue;
+      const identity = 'properties' in token ? getIdentity(token as ClassLikeDeclaration) : tsData.substring(token.start ?? 0, token.end).replace(/[\s\n\t]+/g, ' ');
+      if (typeCheck[identity] > 1) {
+        typeData[token.name] = tsData.substring(token.start ?? 0, token.end);
       }
-    })
-  );
+    }
+  }
 
   const classNames = await Promise.all(
     dirs.map(async (dir) => {
-      const tsFile = join(outPath, dir);
-      const tsData = (await readFile(tsFile)).toString();
-      const parsed = parsedData[dir];
+      const [parsed, tsData, tsFile] = parsedData[dir];
       const modifiedTsData: string[] = [];
       const importData: string[] = [];
 
