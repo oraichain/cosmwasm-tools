@@ -152,11 +152,15 @@ const privateMsgsMap = Object.fromEntries(['MigrateMsg', 'QueryMsg', 'ExecuteMsg
 
 // if declaration appears at least twice then move it to global
 const getIdentity = (declaration: ClassLikeDeclaration): string => {
-  if (declaration.properties.length === 0) return '{}';
-  return declaration.properties
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .map((p) => `${p.name}:${p.type}`)
-    .join(',');
+  return (
+    declaration.name +
+    '{' +
+    declaration.properties
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((p) => `${p.name}:${p.type}`)
+      .join(',') +
+    '}'
+  );
 };
 
 const fixTs = async (outPath: string, enabledReactQuery = false) => {
