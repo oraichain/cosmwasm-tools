@@ -2,7 +2,7 @@ import codegen, { ContractFile } from '@oraichain/ts-codegen';
 import os from 'os';
 import * as fs from 'fs';
 import { basename, join, resolve } from 'path';
-import { ClassLikeDeclaration, File, TypescriptParser } from 'typescript-parser';
+import { ClassLikeDeclaration, Declaration, File, TypescriptParser } from 'typescript-parser';
 import { Argv } from 'yargs';
 import { buildSchemas, filterContractDirs } from '../common';
 
@@ -165,7 +165,7 @@ const fixTs = async (outPath: string, enabledReactQuery = false) => {
   const typeData: { [key: string]: string } = {};
   const parsedData: { [key: string]: [File, string, string] } = {};
   const dirs = (await readdir(outPath)).filter((dir) => dir.endsWith(typeExt));
-
+  const processedTokens: Array<[Declaration, string, string]> = [];
   const typeCheck: { [key: string]: number } = {};
   for (const dir of dirs) {
     const tsFile = join(outPath, dir);
@@ -175,19 +175,18 @@ const fixTs = async (outPath: string, enabledReactQuery = false) => {
     // check public type
     for (let token of parsed.declarations) {
       if (privateMsgsMap[token.name]) continue;
-      const identity = 'properties' in token ? getIdentity(token as ClassLikeDeclaration) : tsData.substring(token.start ?? 0, token.end).replace(/[\s\n\t]+/g, ' ');
+      const tokenStr = tsData.substring(token.start ?? 0, token.end);
+      const identity = 'properties' in token ? getIdentity(token as ClassLikeDeclaration) : tokenStr.replace(/[\s\n\t]+/g, ' ');
+      processedTokens.push([token, tokenStr, identity]);
       typeCheck[identity] = (typeCheck[identity] ?? 0) + 1;
     }
   }
 
-  for (const [parsed, tsData] of Object.values(parsedData)) {
-    for (let token of parsed.declarations) {
-      // already added
-      if (privateMsgsMap[token.name] || typeData[token.name]) continue;
-      const identity = 'properties' in token ? getIdentity(token as ClassLikeDeclaration) : tsData.substring(token.start ?? 0, token.end).replace(/[\s\n\t]+/g, ' ');
-      if (typeCheck[identity] > 1) {
-        typeData[token.name] = tsData.substring(token.start ?? 0, token.end);
-      }
+  for (const [token, tokenStr, identity] of processedTokens) {
+    // already added
+    if (typeData[token.name]) continue;
+    if (typeCheck[identity] > 1) {
+      typeData[token.name] = tokenStr;
     }
   }
 
