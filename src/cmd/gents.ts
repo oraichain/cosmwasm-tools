@@ -178,7 +178,7 @@ const fixTs = async (outPath: string, enabledReactQuery = false) => {
     parsedData[dir] = [parsed, tsData, tsFile];
     // check public type
     for (let token of parsed.declarations) {
-      if (privateMsgsMap[token.name]) continue;
+      if (privateMsgsMap[token.name] || token.name.match(/Response(?:ForEmpty)?$/)) continue;
       const tokenStr = tsData.substring(token.start ?? 0, token.end);
       const identity = 'properties' in token ? getIdentity(token as ClassLikeDeclaration) : tokenStr.replace(/[\s\n\t]+/g, ' ');
       processedTokens.push([token, tokenStr, identity]);
