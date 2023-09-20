@@ -13,7 +13,6 @@
     "dist/index.js"
   ],
   "scripts": {
-    "preinstall": "npm i -g wasm-opt",
     "deploy": "yarn publish --access public . --patch",
     "start": "node dist",
     "build": "esbuild src/index.ts  --bundle --minify --platform=node  --external:fsevents --log-level=error --outfile=dist/index.js"
