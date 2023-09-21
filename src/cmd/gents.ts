@@ -17,7 +17,7 @@ const nestedMap: {
 
 const fixNestedSchema = async (packagePath: string) => {
   const schemaPath = join(packagePath, 'artifacts', 'schema');
-  const schemaName = (await readdir(schemaPath)).find((file) => !file.match(/\/raw\//));
+  const schemaName = (await readdir(schemaPath)).find((file) => file.endsWith('.json'));
 
   // fallback to old version
   if (!schemaName) {
