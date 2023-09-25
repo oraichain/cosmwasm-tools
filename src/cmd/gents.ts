@@ -187,10 +187,11 @@ const fixTs = async (outPath: string, enabledReactQuery = false) => {
   }
 
   for (const [token, tokenStr, identity] of processedTokens) {
-    // already added
-    if (typeData[token.name]) continue;
     if (typeCheck[identity] > 1) {
       typeData[token.name] = tokenStr;
+    } else {
+      // incase there is duplicate name but with different identity
+      delete typeData[token.name];
     }
   }
 
