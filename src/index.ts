@@ -46,7 +46,7 @@ yargs(hideBin(process.argv))
     const encryptedMnemonic = argv._[1];
     console.log(common.decryptMnemonic(encryptedMnemonic));
   })
-  .command('script', 'run custom script', async (yargs) => {
+  .command('script', 'run custom typescript file', async (yargs) => {
     const { argv } = yargs.usage('usage: $0 script path').positional('path', {
       describe: 'a script command',
       type: 'string'
