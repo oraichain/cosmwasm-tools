@@ -142,8 +142,9 @@ const fixImport = async (clientName: string, ext: string, typeData: { [key: stri
           },
           [[], []]
         );
-
-      return `import {${typesImportData.join(', ')}} from "./types";\nimport {${[...clientImportData, ...nestedTypes].join(', ')}} from "./${clientName}.types";`;
+      let importStr = `import {${[...clientImportData, ...nestedTypes].join(', ')}} from "./${clientName}.types";`;
+      if (typesImportData.length) importStr = `import {${typesImportData.join(', ')}} from "./types";\n${importStr}`;
+      return importStr;
     })
   );
 };
@@ -221,7 +222,7 @@ const fixTs = async (outPath: string, enabledReactQuery = false) => {
       }
 
       // import from types, and remove from client
-      modifiedTsData.unshift(`import {${importData.join(', ')}} from "./types";`);
+      if (importData.length) modifiedTsData.unshift(`import {${importData.join(', ')}} from "./types";`);
 
       await writeFile(tsFile, modifiedTsData.join('\n'));
 
@@ -247,16 +248,18 @@ const fixTs = async (outPath: string, enabledReactQuery = false) => {
 
   const exportArr = Object.values(typeData);
 
-  await writeFile(join(outPath, 'types.ts'), exportArr.join('\n'));
-
   const indexData = [];
   for (const className of classNames) {
     indexData.push(`export * as ${className}Types from './${className}.types';`);
     indexData.push(`export * from './${className}.client';`);
   }
 
-  // add export from types
-  indexData.push('export * from "./types";');
+  if (exportArr.length) {
+    await writeFile(join(outPath, 'types.ts'), exportArr.join('\n'));
+    // add export from types
+    indexData.push('export * from "./types";');
+  }
+
   // re-export
   await writeFile(join(outPath, 'index.ts'), indexData.join('\n'));
 };
