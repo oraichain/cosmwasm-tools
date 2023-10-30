@@ -5,22 +5,16 @@ import os from 'os';
 import { basename, join, resolve } from 'path';
 import toml from 'toml';
 import { Argv } from 'yargs';
-import { buildSchemas, filterContractDirs, spawnPromise } from '../common';
+import { buildSchema, filterContractDirs, spawnPromise } from '../common';
 
 const {
   existsSync,
   promises: { mkdir, readFile, copyFile, rm, stat }
 } = fs;
 
-const buildContract = async (contractDir: string, debug: boolean, output: string, targetDir: string, optimizeArgs: string[]) => {
-  // name is extract from Cargo.toml
-  const cargoPath = join(contractDir, 'Cargo.toml');
+const buildContract = async (packageName: string, contractDir: string, debug: boolean, output: string, targetDir: string, optimizeArgs: string[]) => {
   const name = basename(contractDir);
-  const tomlObj = toml.parse(await readFile(cargoPath).then((b) => b.toString()));
-  if (!tomlObj.package?.name) {
-    return console.warn(`"${contractDir}" is not a contract folder!`);
-  }
-  const buildName = tomlObj.package.name.replaceAll('-', '_');
+  const buildName = packageName.replaceAll('-', '_');
   const artifactDir = join(contractDir, 'artifacts');
   const outputDir = output || artifactDir;
   const wasmFile = join(outputDir, name + '.wasm');
@@ -66,14 +60,14 @@ const buildContracts = async (packages: string[], debug: boolean, schema: boolea
   const cargoDir = join(os.homedir(), '.cargo');
   const targetDir = join(cargoDir, 'target');
 
-  if (schema) {
-    return await buildSchemas(packages, targetDir);
-  }
-
   // filter contract folder only
-  const contractDirs = filterContractDirs(packages);
+  const contractDirRet = filterContractDirs(packages);
 
-  if (!contractDirs.length) return;
+  if (!contractDirRet.length) return;
+
+  if (schema) {
+    return await Promise.all(contractDirRet.map(([contractDir, packageName]) => buildSchema(packageName, contractDir, targetDir)));
+  }
 
   // make cargo load crates faster
   process.env.CARGO_REGISTRIES_CRATES_IO_PROTOCOL = 'sparse';
@@ -92,12 +86,13 @@ const buildContracts = async (packages: string[], debug: boolean, schema: boolea
 
   // run build all frist
   await Promise.all(
-    contractDirs.map(async (contractDir) => {
-      return await buildContract(contractDir, debug, outputDir, targetDir, optimizeArgs);
+    contractDirRet.map(async ([contractDir, packageName]) => {
+      return await buildContract(packageName, contractDir, debug, outputDir, targetDir, optimizeArgs);
     })
   );
 
   // start watching process
+  const contractDirs = contractDirRet.map(([c]) => c);
   if (watchMode) {
     console.log(`\n\nWatching these contract folders:\n ${contractDirs.join('\n')}`);
     const running = {};
@@ -105,12 +100,12 @@ const buildContracts = async (packages: string[], debug: boolean, schema: boolea
     watch(contractDirs, { persistent: true, interval }).on('change', async (filename) => {
       if (!filename.endsWith('.rs')) return;
       // get first path that contains file
-      const contractDir = contractDirs.find((p) => filename.startsWith(p));
+      const [contractDir, packageName] = contractDirRet.find(([c]) => filename.startsWith(c));
       // running
       if (running[contractDir]) return;
       running[contractDir] = true;
       const start = Date.now();
-      await buildContract(contractDir, debug, outputDir, targetDir, optimizeArgs);
+      await buildContract(packageName, contractDir, debug, outputDir, targetDir, optimizeArgs);
       running[contractDir] = false;
       console.log('✨ all done in', Date.now() - start, 'ms!');
     });

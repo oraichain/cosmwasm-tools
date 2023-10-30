@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import { basename, join, resolve } from 'path';
 import { ClassLikeDeclaration, Declaration, File, TypescriptParser } from 'typescript-parser';
 import { Argv } from 'yargs';
-import { buildSchemas, filterContractDirs } from '../common';
+import { buildSchema, filterContractDirs } from '../common';
 
 const {
   existsSync,
@@ -30,13 +30,16 @@ const fixNestedSchema = async (packagePath: string) => {
   if (!schemaJSON?.query?.anyOf) return;
   const responses = {};
   let update = false;
+
   schemaJSON.query.anyOf = schemaJSON.query.anyOf.map((item: any) => {
     if (item.$ref) {
       update = true;
     }
     const ref = item.$ref || item.properties[item.required[0]].$ref;
     if (!ref) return item;
-    const matched = ref.match(/([A-Z][a-z]+)Query$/)[1];
+    const matches = ref.match(/([A-Z][a-z]+)Query$/);
+    if (!matches) return;
+    const matched = matches[1];
     const name = matched.toLowerCase();
     const input = ref.split('/').pop();
     const subResponses = schemaJSON.query.definitions[input].oneOf.map((item: any) => schemaJSON.responses[item.required[0]].title);
@@ -269,16 +272,16 @@ export const genTypescripts = async (packages: string[], enabledReactQuery: bool
   const targetDir = join(cargoDir, 'target');
 
   // filter contract folder only
-  const contractDirs = filterContractDirs(packages);
+  const contractDirRet = filterContractDirs(packages);
 
   const contracts = await Promise.all(
-    contractDirs.map(async (contractDir) => {
+    contractDirRet.map(async ([contractDir, packageName]) => {
       const baseName = basename(contractDir);
       const schemaDir = join(contractDir, 'artifacts', 'schema');
 
       // make sure to build schema first time
       if (!existsSync(schemaDir)) {
-        await buildSchemas([contractDir], targetDir);
+        await buildSchema(packageName, contractDir, targetDir);
       }
 
       // try fix nested schema if has

@@ -2,10 +2,10 @@ import { spawn, execFileSync } from 'child_process';
 import readlineSync from 'readline-sync';
 import crypto from 'crypto';
 import * as fs from 'fs';
-import { join, resolve } from 'path';
+import toml from 'toml';
+import { join, resolve, basename } from 'path';
 
 const {
-  existsSync,
   promises: { mkdir }
 } = fs;
 
@@ -38,29 +38,52 @@ export const decryptMnemonic = (encryptedMnemonic: string) => {
   return decrypt(password, encryptedMnemonic);
 };
 
-export const buildSchemas = async (packages: string[], targetDir: string) => {
-  const res = await Promise.all(
-    packages.map(async (contractDir) => {
-      const binCmd = existsSync(join(contractDir, 'src', 'bin')) ? '--bin' : '--example';
-      const artifactDir = join(contractDir, 'artifacts');
-      if (!existsSync(artifactDir)) {
-        await mkdir(artifactDir);
-      }
-      return [binCmd, artifactDir];
-    })
-  );
+export const buildSchema = async (packageName: string, contractDir: string, targetDir: string) => {
+  const binCmd = fs.existsSync(join(contractDir, 'src', 'bin')) ? '--bin' : '--example';
+  const artifactDir = join(contractDir, 'artifacts');
+  if (!fs.existsSync(artifactDir)) {
+    await mkdir(artifactDir);
+  }
 
-  // schema can not run in parallel
-  for (const [binCmd, artifactDir] of res) {
-    execFileSync('cargo', ['run', '-q', binCmd, 'schema', '--target-dir', targetDir], { cwd: artifactDir, env: process.env, stdio: 'inherit' });
+  execFileSync('cargo', ['run', '-q', binCmd, 'schema', '--target-dir', targetDir], { cwd: artifactDir, env: process.env, stdio: 'inherit' });
+
+  // check if we can merge into one
+  const schemaDir = join(artifactDir, 'schema');
+  const singleSchema = resolve(schemaDir, `${packageName}.json`);
+  if (!fs.existsSync(singleSchema)) {
+    // try to combine all json file into one then remove them
+    const singleSchemaJson = {
+      contract_name: 'oraiswap-oracle',
+      contract_version: '0.1.1',
+      idl_version: '1.0.0',
+      responses: {}
+    };
+    for (const fileName of fs.readdirSync(schemaDir)) {
+      const filePath = resolve(schemaDir, fileName);
+      console.log(`Merging "${filePath}" into "${singleSchema}"`);
+      const fileContentJson = JSON.parse(fs.readFileSync(filePath).toString());
+      if (fileName.endsWith('_msg.json')) {
+        singleSchemaJson[fileName.slice(0, -9)] = fileContentJson;
+      } else if (fileName.endsWith('_response.json')) {
+        singleSchemaJson.responses[fileName.slice(0, -14)] = fileContentJson;
+      }
+      fs.unlinkSync(filePath);
+    }
+    fs.writeFileSync(singleSchema, JSON.stringify(singleSchemaJson, null, 2));
   }
 };
 
 export const filterContractDirs = (packages: string[]) => {
   // filter contract folder only
   return packages
-    .filter((contractDir) => {
-      return existsSync(join(contractDir, 'Cargo.toml'));
+    .map((contractDir) => {
+      // name is extract from Cargo.toml
+      const cargoPath = join(contractDir, 'Cargo.toml');
+
+      if (!fs.existsSync(cargoPath)) return [contractDir];
+
+      const tomlObj = toml.parse(fs.readFileSync(cargoPath).toString());
+      return [contractDir, tomlObj.package?.name];
     })
-    .map((contractDir) => resolve(contractDir));
+    .filter(([, packageName]) => packageName);
 };
