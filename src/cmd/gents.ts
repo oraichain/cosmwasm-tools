@@ -27,7 +27,7 @@ const fixNestedSchema = async (packagePath: string) => {
   const schemaFile = join(schemaPath, schemaName);
 
   const schemaJSON = JSON.parse((await readFile(schemaFile)).toString());
-  if (!schemaJSON.query.anyOf) return;
+  if (!schemaJSON?.query?.anyOf) return;
   const responses = {};
   let update = false;
   schemaJSON.query.anyOf = schemaJSON.query.anyOf.map((item: any) => {
