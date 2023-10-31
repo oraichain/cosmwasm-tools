@@ -3,7 +3,6 @@ import { watch } from 'chokidar';
 import * as fs from 'fs';
 import os from 'os';
 import { basename, join, resolve } from 'path';
-import toml from 'toml';
 import { Argv } from 'yargs';
 import { buildSchema, filterContractDirs, spawnPromise } from '../common';
 
