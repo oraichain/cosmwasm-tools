@@ -1,8 +1,6 @@
 # Installation
 
-You can install cwtools globally using npm (pass --ignore-scripts due to standalone build)
-
-`npm install -g @oraichain/cwtools --ignore-scripts`
+You can install cwtools globally using npm `npm install -g @oraichain/cwtools` or yarn `yarn global add @oraichain/cwtools`
 
 # Usage
 
