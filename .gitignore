@@ -20,5 +20,5 @@ node_modules
 
 scripts
 
+binaryen-version_*
 lib
-wasm-opt

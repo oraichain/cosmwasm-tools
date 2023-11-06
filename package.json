@@ -20,9 +20,6 @@
   "engines": {
     "node": ">=16"
   },
-  "dependencies": {
-    "tar": "^6.2.0"
-  },
   "devDependencies": {
     "@cosmjs/cosmwasm-stargate": "^0.31.1",
     "@cosmjs/crypto": "^0.31.1",
@@ -31,12 +28,14 @@
     "@cosmjs/stargate": "^0.31.1",
     "@oraichain/ts-codegen": "^0.35.8",
     "@types/readline-sync": "^1.4.4",
-    "@types/tar": "^6.1.7",
+    "@types/tar-fs": "^2.0.3",
     "@types/yargs": "^17.0.24",
     "chokidar": "^3.5.3",
     "dotenv": "^16.0.3",
     "esbuild": "^0.19.2",
+    "gunzip-maybe": "^1.4.2",
     "readline-sync": "^1.4.10",
+    "tar-fs": "^3.0.4",
     "toml": "^3.0.0",
     "typescript": "^5.0.3",
     "typescript-parser": "^2.6.1",

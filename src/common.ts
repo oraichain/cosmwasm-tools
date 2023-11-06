@@ -1,10 +1,12 @@
 import { spawn, execFileSync } from 'child_process';
 import readlineSync from 'readline-sync';
+import { pipeline } from 'stream/promises';
 import crypto from 'crypto';
 import * as fs from 'fs';
 import toml from 'toml';
 import { join, resolve } from 'path';
-import { extract } from 'tar';
+import { extract } from 'tar-fs';
+import gunzip from 'gunzip-maybe';
 
 const { mkdir, copyFile, rmdir, unlink, writeFile } = fs.promises;
 
@@ -130,14 +132,14 @@ export const getWasmOpt = async (binaryenVersion = 112) => {
 
     await writeFile(binariesOutputPath, binary);
 
-    await extract({
-      file: binariesOutputPath,
-      filter: (_path, stat) => {
-        const { path: filePath } = stat.header;
-
-        return [executableFilename, 'libbinaryen.dylib', 'libbinaryen.a', 'binaryen.lib'].some((filename) => filePath.endsWith(filename));
-      }
-    });
+    await pipeline(
+      fs.createReadStream(binariesOutputPath).pipe(gunzip()),
+      extract(resolve(__dirname, '..'), {
+        ignore: (name) => {
+          return ![executableFilename, 'libbinaryen.dylib', 'libbinaryen.a', 'binaryen.lib'].some((filename) => name.endsWith(filename));
+        }
+      })
+    );
 
     const libName = {
       win32: 'binaryen.lib',
@@ -163,13 +165,8 @@ export const getWasmOpt = async (binaryenVersion = 112) => {
 
     await copyFile(downloadedWasmOpt, outputWasmOpt);
     await copyFile(downloadedLibbinaryen, outputLibbinaryen);
-
-    await unlink(binariesOutputPath);
-    await unlink(downloadedWasmOpt);
-    await unlink(downloadedLibbinaryen);
-    await rmdir(unpackedBinFolder);
-    await rmdir(unpackedLibFolder);
-    await rmdir(unpackedFolder);
+    await Promise.all([binariesOutputPath, downloadedWasmOpt, downloadedLibbinaryen].map(unlink));
+    await Promise.all([unpackedBinFolder, unpackedLibFolder, unpackedFolder].map((dir) => rmdir(dir, { recursive: true })));
     return outputWasmOpt;
   } catch (e) {
     throw new Error(`\x1b[31m${e}\x1b[0m`);
