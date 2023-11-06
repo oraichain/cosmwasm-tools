@@ -1668,6 +1668,13 @@
   dependencies:
     "@types/node" "*"
 
+"@types/gunzip-maybe@^1.4.1":
+  version "1.4.1"
+  resolved "https://registry.yarnpkg.com/@types/gunzip-maybe/-/gunzip-maybe-1.4.1.tgz#8865c4478cf3dfc7eecfa85ffba46f8aa288636d"
+  integrity sha512-FAxzVI4EbR3bsvsvtNsJ6kqaxQftN1wD/F6A+51m85oo1oRoZn15rQwbedJY2GmzyUKl6EjG9wKkgShwcTQgTA==
+  dependencies:
+    "@types/node" "*"
+
 "@types/istanbul-lib-coverage@*", "@types/istanbul-lib-coverage@^2.0.0":
   version "2.0.4"
   resolved "https://registry.yarnpkg.com/@types/istanbul-lib-coverage/-/istanbul-lib-coverage-2.0.4.tgz#8467d4b3c087805d63580480890791277ce35c44"
