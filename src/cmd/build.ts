@@ -4,18 +4,18 @@ import * as fs from 'fs';
 import os from 'os';
 import { basename, join, resolve } from 'path';
 import { Argv } from 'yargs';
-import { buildSchema, filterContractDirs, spawnPromise } from '../common';
+import { buildSchema, getWasmOpt, filterContractDirs, spawnPromise } from '../common';
 
 const {
   existsSync,
-  promises: { mkdir, readFile, copyFile, rm, stat }
+  promises: { mkdir, rm, stat }
 } = fs;
 
 const buildContract = async (packageName: string, contractDir: string, debug: boolean, output: string, targetDir: string, optimizeArgs: string[]) => {
   const name = basename(contractDir);
   const buildName = packageName.replaceAll('-', '_');
   const artifactDir = join(contractDir, 'artifacts');
-  const outputDir = output || artifactDir;
+  const outputDir = resolve(output || artifactDir);
   const wasmFile = join(outputDir, name + '.wasm');
   console.log(`Building contract in ${outputDir}`);
   // Linker flag "-s" for stripping (https://github.com/rust-lang/cargo/issues/3483#issuecomment-431209957)
@@ -29,14 +29,17 @@ const buildContract = async (packageName: string, contractDir: string, debug: bo
     RUSTFLAGS: '-C link-arg=-s',
     CARGO_INCREMENTAL: process.env.RUSTC_WRAPPER === 'sccache' ? '0' : '1'
   };
+
+  const wasmOptPath = await getWasmOpt();
+
   if (debug) {
     await spawnPromise('cargo', ['build', '-q', '--lib', '--target-dir', targetDir, '--target', 'wasm32-unknown-unknown'], contractDir, options);
     console.log(`Optimizing ${wasmFile}`);
-    await spawnPromise('wasm-opt', ['-O1', '--signext-lowering', join(targetDir, 'wasm32-unknown-unknown', 'debug', buildName + '.wasm'), '-o', wasmFile], contractDir);
+    await spawnPromise(wasmOptPath, ['-O1', '--signext-lowering', join(targetDir, 'wasm32-unknown-unknown', 'debug', buildName + '.wasm'), '-o', wasmFile], contractDir);
   } else {
     await spawnPromise('cargo', ['build', '-q', '--release', '--lib', '--target-dir', targetDir, '--target', 'wasm32-unknown-unknown'], contractDir, options);
     console.log(`Optimizing ${wasmFile}`);
-    await spawnPromise('wasm-opt', [...optimizeArgs, '--signext-lowering', join(targetDir, 'wasm32-unknown-unknown', 'release', buildName + '.wasm'), '-o', wasmFile], contractDir);
+    await spawnPromise(wasmOptPath, [...optimizeArgs, '--signext-lowering', join(targetDir, 'wasm32-unknown-unknown', 'release', buildName + '.wasm'), '-o', wasmFile], contractDir);
   }
 
   // show content

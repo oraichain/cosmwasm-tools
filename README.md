@@ -1,7 +1,5 @@
 # Installation
 
-require wasm-opt: `npm i -g wasm-opt`
-
 You can install cwtools globally using npm (pass --ignore-scripts due to standalone build)
 
 `npm install -g @oraichain/cwtools --ignore-scripts`

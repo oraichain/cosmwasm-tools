@@ -3,11 +3,10 @@ import readlineSync from 'readline-sync';
 import crypto from 'crypto';
 import * as fs from 'fs';
 import toml from 'toml';
-import { join, resolve, basename } from 'path';
+import { join, resolve } from 'path';
+import { extract } from 'tar';
 
-const {
-  promises: { mkdir }
-} = fs;
+const { mkdir, copyFile, rmdir, unlink, writeFile } = fs.promises;
 
 export const encrypt = (password: string, val: string) => {
   const hashedPassword = crypto.createHash('sha256').update(password).digest();
@@ -86,4 +85,93 @@ export const filterContractDirs = (packages: string[]) => {
       return [contractDir, tomlObj.package?.name];
     })
     .filter(([, packageName]) => packageName);
+};
+
+const { platform } = process;
+
+async function getUrl(binaryenVersion: number) {
+  const { arch } = process;
+  const baseURL = `https://github.com/WebAssembly/binaryen/releases/download/version_${binaryenVersion}`;
+
+  switch (platform) {
+    case 'win32':
+      if (arch === 'x64') {
+        return `${baseURL}/binaryen-version_${binaryenVersion}-x86_64-windows.tar.gz`;
+      }
+      break;
+    case 'darwin':
+      if (arch === 'arm64') {
+        return `${baseURL}/binaryen-version_${binaryenVersion}-arm64-macos.tar.gz`;
+      }
+      if (arch === 'x64') {
+        return `${baseURL}/binaryen-version_${binaryenVersion}-x86_64-macos.tar.gz`;
+      }
+      break;
+    case 'linux':
+      if (arch === 'x64') {
+        return `${baseURL}/binaryen-version_${binaryenVersion}-x86_64-linux.tar.gz`;
+      }
+      break;
+  }
+
+  throw new Error('\x1b[33mThis platform not supported\x1b[0m');
+}
+
+export const getWasmOpt = async (binaryenVersion = 112) => {
+  try {
+    const executableFilename = platform === 'win32' ? 'wasm-opt.exe' : 'wasm-opt';
+    const outputWasmOpt = resolve(__dirname, executableFilename);
+    if (fs.existsSync(outputWasmOpt)) return outputWasmOpt;
+    const binariesOutputPath = resolve(__dirname, 'binaries.tar');
+
+    const binaryUrl = await getUrl(binaryenVersion);
+    const binaryResponse = await fetch(binaryUrl);
+    const binary = Buffer.from(await binaryResponse.arrayBuffer());
+
+    await writeFile(binariesOutputPath, binary);
+
+    await extract({
+      file: binariesOutputPath,
+      filter: (_path, stat) => {
+        const { path: filePath } = stat.header;
+
+        return [executableFilename, 'libbinaryen.dylib', 'libbinaryen.a', 'binaryen.lib'].some((filename) => filePath.endsWith(filename));
+      }
+    });
+
+    const libName = {
+      win32: 'binaryen.lib',
+      linux: 'libbinaryen.a',
+      darwin: 'libbinaryen.dylib'
+    };
+
+    const libFolder = 'lib';
+
+    const unpackedFolder = resolve(__dirname, '..', `binaryen-version_${binaryenVersion}`);
+    const unpackedLibFolder = resolve(unpackedFolder, libFolder);
+    const unpackedBinFolder = resolve(unpackedFolder, 'bin');
+    const downloadedWasmOpt = resolve(unpackedBinFolder, executableFilename);
+    const downloadedLibbinaryen = resolve(unpackedLibFolder, libName[platform]);
+
+    const outputLibbinaryen = resolve(__dirname, `../${libFolder}/${libName[platform]}`);
+
+    const outFolder = resolve(__dirname, `../${libFolder}`);
+
+    if (!fs.existsSync(outFolder)) {
+      await mkdir(outFolder);
+    }
+
+    await copyFile(downloadedWasmOpt, outputWasmOpt);
+    await copyFile(downloadedLibbinaryen, outputLibbinaryen);
+
+    await unlink(binariesOutputPath);
+    await unlink(downloadedWasmOpt);
+    await unlink(downloadedLibbinaryen);
+    await rmdir(unpackedBinFolder);
+    await rmdir(unpackedLibFolder);
+    await rmdir(unpackedFolder);
+    return outputWasmOpt;
+  } catch (e) {
+    throw new Error(`\x1b[31m${e}\x1b[0m`);
+  }
 };
