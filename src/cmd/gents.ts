@@ -11,59 +11,6 @@ const {
   promises: { readdir, readFile, writeFile, rm }
 } = fs;
 
-const nestedMap: {
-  [key: string]: { [key: string]: [string, string, string[]] };
-} = {};
-
-const fixNestedSchema = async (packagePath: string) => {
-  const schemaPath = join(packagePath, 'artifacts', 'schema');
-  const schemaName = (await readdir(schemaPath)).find((file) => file.endsWith('.json'));
-
-  // fallback to old version
-  if (!schemaName) {
-    return;
-  }
-
-  const schemaFile = join(schemaPath, schemaName);
-
-  const schemaJSON = JSON.parse((await readFile(schemaFile)).toString());
-  if (!schemaJSON?.query?.anyOf) return;
-  const responses = {};
-  let update = false;
-
-  schemaJSON.query.anyOf = schemaJSON.query.anyOf.map((item: any) => {
-    if (item.$ref) {
-      update = true;
-    }
-    const ref = item.$ref || item.properties[item.required[0]].$ref;
-    if (!ref) return item;
-    const matches = ref.match(/([A-Z][a-z]+)Query$/);
-    if (!matches) return;
-    const matched = matches[1];
-    const name = matched.toLowerCase();
-    const input = ref.split('/').pop();
-    const subResponses = schemaJSON.query.definitions[input].oneOf.map((item: any) => schemaJSON.responses[item.required[0]].title);
-
-    responses[`${matched}Response`] = [name, input, subResponses];
-
-    return item.$ref
-      ? {
-          type: 'object',
-          required: [name],
-          properties: {
-            [name]: item
-          },
-          additionalProperties: false
-        }
-      : item;
-  });
-
-  if (update) {
-    await writeFile(schemaFile, JSON.stringify(schemaJSON, null, 2));
-  }
-  return responses;
-};
-
 const genTS = async (contracts: Array<ContractFile>, tsFolder: string, enabledReactQuery: boolean = false) => {
   const outPath = resolve(tsFolder);
   await rm(outPath, { recursive: true, force: true });
@@ -103,32 +50,7 @@ const genTS = async (contracts: Array<ContractFile>, tsFolder: string, enabledRe
   return { outPath };
 };
 
-const fixNested = async (clientName: string, ext: string, nestedResponses: { [key: string]: [string, string, string[]] }, outPath: string) => {
-  const clientFile = join(outPath, `${clientName}.${ext}`);
-  let clientData = (await readFile(clientFile)).toString();
-  Object.entries(nestedResponses).forEach(([key, [name, inputType]]) => {
-    clientData = clientData
-      .replace(`${name}: () => Promise<${key}>;`, `${name}: (input: ${inputType}) => Promise<${key}>;`)
-      .replace(`${name} = async (): Promise<${key}> => {`, `${name} = async (input:${inputType}): Promise<${key}> => {`)
-      .replace(`${name}: {}`, `${name}: input`);
-  });
-  await writeFile(clientFile, clientData);
-};
-
-const fixNestedReactQuery = async (clientName: string, ext: string, nestedResponses: { [key: string]: [string, string, string[]] }, outPath: string) => {
-  const clientFile = join(outPath, `${clientName}.${ext}`);
-  let clientData = (await readFile(clientFile)).toString();
-  Object.entries(nestedResponses).forEach(([key, [name, inputType]]) => {
-    clientData = clientData
-      .replace(`${inputType}<TData> extends ${clientName}ReactQuery<${key}, TData> {}`, `${inputType}<TData> extends ${clientName}ReactQuery<${key}, TData> {input: ${inputType}}`)
-      // use regular for dynamic replacement
-      .replace(new RegExp(`\\n\\}:\\s*([\\w_\\d]+${inputType})<TData>`), `,\n\tinput\n}: $1<TData>`)
-      .replace(`client.${name}()`, `client.${name}(input)`);
-  });
-  await writeFile(clientFile, clientData);
-};
-
-const fixImport = async (clientName: string, ext: string, typeData: { [key: string]: string }, nestedTypes: string[], outPath: string) => {
+const fixImport = async (clientName: string, ext: string, typeData: { [key: string]: string }, outPath: string) => {
   const clientFile = join(outPath, `${clientName}.${ext}`);
   const clientData = await readFile(clientFile);
 
@@ -145,7 +67,7 @@ const fixImport = async (clientName: string, ext: string, typeData: { [key: stri
           },
           [[], []]
         );
-      let importStr = `import {${[...clientImportData, ...nestedTypes].join(', ')}} from "./${clientName}.types";`;
+      let importStr = `import {${clientImportData.join(', ')}} from "./${clientName}.types";`;
       if (typesImportData.length) importStr = `import {${typesImportData.join(', ')}} from "./types";\n${importStr}`;
       return importStr;
     })
@@ -214,15 +136,7 @@ const fixTs = async (outPath: string, enabledReactQuery = false) => {
       }
 
       // fix nested schema
-      const contractName = basename(dir, typeExt);
-      const nestedResponses = nestedMap[contractName];
-      const nestedTypes: string[] = [];
-      if (nestedResponses) {
-        Object.entries(nestedResponses).forEach(([key, value]) => {
-          nestedTypes.push(key);
-          modifiedTsData.push(`export type ${key} = ${value[2].join(' | ')};`);
-        });
-      }
+      // modifiedTsData.push(`export type ${key} = ${value[2].join(' | ')};`);
 
       // import from types, and remove from client
       if (importData.length) modifiedTsData.unshift(`import {${importData.join(', ')}} from "./types";`);
@@ -232,18 +146,10 @@ const fixTs = async (outPath: string, enabledReactQuery = false) => {
       // update client file
 
       const className = basename(dir, typeExt);
-      await fixImport(className, 'client.ts', typeData, nestedTypes, outPath);
-
-      if (nestedResponses) {
-        await fixNested(className, 'client.ts', nestedResponses, outPath);
-      }
+      await fixImport(className, 'client.ts', typeData, outPath);
 
       if (enabledReactQuery) {
-        await fixImport(className, 'react-query.ts', typeData, nestedTypes, outPath);
-
-        if (nestedResponses) {
-          await fixNestedReactQuery(className, 'react-query.ts', nestedResponses, outPath);
-        }
+        await fixImport(className, 'react-query.ts', typeData, outPath);
       }
       return className;
     })
@@ -282,17 +188,6 @@ export const genTypescripts = async (packages: string[], enabledReactQuery: bool
       // make sure to build schema first time
       if (!existsSync(schemaDir)) {
         await buildSchema(packageName, contractDir, targetDir);
-      }
-
-      // try fix nested schema if has
-      const responses = await fixNestedSchema(contractDir);
-      if (responses) {
-        nestedMap[
-          contractDir
-            .split('/')
-            .pop()!
-            .replace(/(^\w|_\w)/g, (m, g1) => g1.slice(-1).toUpperCase())
-        ] = responses;
       }
 
       return {
