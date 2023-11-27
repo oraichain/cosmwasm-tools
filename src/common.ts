@@ -7,8 +7,6 @@ import toml from 'toml';
 import { join, resolve } from 'path';
 import { extract } from 'tar-fs';
 import gunzip from 'gunzip-maybe';
-import fetch from 'node-fetch';
-import {RequestInfo, RequestInit} from 'node-fetch';
 
 const { mkdir, copyFile, rmdir, unlink, writeFile } = fs.promises;
 
@@ -181,10 +179,7 @@ export type RetryOptions = {
   callback?: (retry: number) => void;
 };
 
-export const fetchRetry = async (
-  url: RequestInfo | URL,
-  opts: RequestInit & RetryOptions = {}
-) => {
+export const fetchRetry = async (url: RequestInfo | URL, opts: RequestInit & RetryOptions = {}) => {
   let { retry = 3, callback, timeout = 30000, ...init } = opts;
   init.signal = AbortSignal.timeout(timeout);
   while (retry > 0) {

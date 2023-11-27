@@ -36,7 +36,6 @@
     "dotenv": "^16.0.3",
     "esbuild": "^0.19.2",
     "gunzip-maybe": "^1.4.2",
-    "node-fetch": "^3.3.2",
     "nodejs-file-downloader": "^4.12.1",
     "readline-sync": "^1.4.10",
     "serialize-error": "^11.0.3",
