@@ -379,3 +379,5 @@ export default async (yargs: Argv) => {
     console.log(error);
   }
 };
+
+// Eg: yarn start network statesync oraichain
