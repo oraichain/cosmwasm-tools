@@ -6,9 +6,6 @@ import { fetchRetry } from "../../../common";
 import os from "os";
 import Downloader from "nodejs-file-downloader";
 
-// TODO: make RPC & P2P ports more dynamic
-const PEER_RPC_PORT = 26657;
-const PEER_P2P_PORT = 26656;
 const MONIKER = "moniker";
 const githubUserContent = "https://raw.githubusercontent.com/";
 
@@ -100,7 +97,7 @@ export class RpcNode {
     const containsHttps = regex.test(rpcUrl);
     // force rpc port to be 443 because the statesync rpc servers in config.toml require the domains to have ports
     if (containsHttps) return `${rpcUrl}:443`;
-    return `http://${rpcUrl}:${PEER_RPC_PORT}`;
+    return rpcUrl;
   };
 
   public async isCallable(): Promise<boolean> {
@@ -311,7 +308,7 @@ export default async (yargs: Argv) => {
     .option("rpcs", {
       type: "array",
       description:
-        'Extra rpc addresses / domains. Eg: "htps://rpc.orai.io". This is optional as the script will automatically get all peers & rpcs on chain registry',
+        'Extra rpc addresses / domains. Eg: "htps://rpc.orai.io; http://3.134.19.98:26657". This is optional as the script will automatically get all peers & rpcs on chain registry',
       default: [],
     })
     .option("trust-height-range", {
