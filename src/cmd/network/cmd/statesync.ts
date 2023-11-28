@@ -5,9 +5,33 @@ import shell from "shelljs";
 import { fetchRetry } from "../../../common";
 import os from "os";
 import Downloader from "nodejs-file-downloader";
+import path from "path";
 
 const MONIKER = "moniker";
 const githubUserContent = "https://raw.githubusercontent.com/";
+
+export const parseNodeHomeWithEnvVariable = (nodeHome: string): string => {
+  // Define a regular expression to match the variable between $ and /
+  const envVariableRegex = /\$(\w+)/;
+  // Extract the environment variable name using the regular expression
+  const match = nodeHome.match(envVariableRegex);
+
+  // Check if a match is found
+  if (match && match[1]) {
+    const envVariableName = match[1];
+
+    // Replace $CUSTOM_VAR with the value of the specified environment variable
+    const replacedPath = nodeHome.replace(
+      envVariableRegex,
+      process.env[envVariableName]
+    );
+
+    // Use path.resolve to handle any relative paths or additional slashes
+    const resolvedPath = path.resolve(replacedPath);
+    return resolvedPath;
+  }
+  throw `The node home is: ${nodeHome}, which is absolute, which should not be correct!`;
+};
 
 /**
  * This function fetches the chain.json file on cosmos/chain-registry github of a cosmos-based chain
@@ -116,12 +140,10 @@ export class ChainInfo {
   private _rpcs: RpcNode[];
   private _daemonName: string;
   private _codebase: any;
+  private _nodeHome: string;
 
-  constructor(public readonly chainName: string) {}
-
-  async setupChainInfo(nodeHome: string, p2ps: string[], rpcs: string[]) {
-    await this.fetchChainInfo(p2ps, rpcs);
-    await this.overrideGenesisFile(nodeHome);
+  constructor(public readonly chainName: string, nodeHome: string) {
+    this._nodeHome = nodeHome;
   }
   get p2pNodes(): string[] {
     return this._p2pNodes;
@@ -135,6 +157,9 @@ export class ChainInfo {
   get codebase(): any {
     return this._codebase;
   }
+  get nodeHome(): string {
+    return this._nodeHome;
+  }
   private parseP2pPeer(id: string, address: string) {
     return `${id}@${address}`;
   }
@@ -142,16 +167,27 @@ export class ChainInfo {
     return address;
   }
 
-  async fetchChainInfo(additionalP2ps: string[], additionalRpcs: string[]) {
+  // fetch chain info from chain registry & store into the instance. Then, return the new node home from the chain info if not specified
+  async fetchChainInfo(
+    additionalP2ps: string[],
+    additionalRpcs: string[]
+  ): Promise<string> {
     const {
       daemon_name: daemonName,
       codebase,
       peers,
       apis,
+      node_home: nodeHome,
     } = await fetchChainInfo(this.chainName);
+    console.log(daemonName, codebase, peers, apis);
 
+    // TODO: need to validate if the chain info matches the chain name or not. If not => throw error
     this._daemonName = daemonName;
     this._codebase = codebase;
+    // by default, we use node home on chain-registry if not specified
+    if (!this._nodeHome) {
+      this._nodeHome = parseNodeHomeWithEnvVariable(nodeHome);
+    }
     const { persistent_peers: p2pNodes } = peers;
     const { rpc: rpcs } = apis;
     this._p2pNodes = p2pNodes
@@ -173,8 +209,7 @@ export class ChainInfo {
       })
       .filter((rpc) => rpc);
 
-    console.log("persistent peers: ", this._p2pNodes);
-    console.log("rpcs: ", this._rpcs);
+    return this._nodeHome;
   }
 
   async getGoodPeer() {
@@ -192,11 +227,11 @@ export class ChainInfo {
     return (resJson as any).result.genesis;
   };
 
-  async overrideGenesisFile(nodeHome: string) {
+  async overrideGenesisFile() {
     const genesisData = await this.fetchGenesisFile();
     shell
       .ShellString(JSON.stringify(genesisData))
-      .to(`${nodeHome}/config/genesis.json`);
+      .to(`${this.nodeHome}/config/genesis.json`);
   }
 }
 
@@ -210,16 +245,29 @@ export class NodeConfigurator {
     });
   }
 
-  async configureNodeForStateSync(nodeHome: string, trustHeightRange: number) {
+  private populateRpcServers(): string[] {
+    const rpcUrls = this.chainInfo.rpcs.map((rpc) => rpc.rpcUrl);
+    if (this.chainInfo.rpcs.length > 1) {
+      return rpcUrls;
+    }
+    if (rpcUrls.length === 0) {
+      throw "Empty RPC URL list. Cannot start the statesync process";
+    }
+    // double the rpc servers so we can bypass the statesync error: at least two rpc_servers entries is required
+    return rpcUrls.concat(rpcUrls);
+  }
+
+  async configureNodeForStateSync(trustHeightRange: number) {
     // update config files for statesync config
     const { p2pNodes, rpcs } = this.chainInfo;
-    const appTomlPath = `${nodeHome}/config/app.toml`;
-    const configTomlPath = `${nodeHome}/config/config.toml`;
+    const appTomlPath = `${this.chainInfo.nodeHome}/config/app.toml`;
+    const configTomlPath = `${this.chainInfo.nodeHome}/config/config.toml`;
     const goodPeer = await this.getGoodPeer();
     const latestHeight = (await goodPeer.tmClient.block()).block.header.height;
     const trustHeight = latestHeight - trustHeightRange;
     const hashBytes = (await goodPeer.tmClient.block(trustHeight)).blockId.hash;
     const trustHash = Buffer.from(hashBytes).toString("hex").toUpperCase();
+    const rpcUrls = this.populateRpcServers();
 
     // auto config snapshot interval for other nodes to download statesync
     shell.sed(
@@ -261,7 +309,7 @@ export class NodeConfigurator {
     shell.sed(
       "-i",
       /^rpc_servers\s*=\s*.*/m,
-      `rpc_servers = "${rpcs.map((peer) => peer.rpcUrl).join(",")}"`,
+      `rpc_servers = "${rpcUrls.join(",")}"`,
       configTomlPath
     );
 
@@ -297,13 +345,7 @@ export default async (yargs: Argv) => {
       type: "array",
       description:
         'Extra p2p addresses with their node ids to guarantee that the statesync process will complete. Eg: "4d0f2d042405abbcac5193206642e1456fe89963@3.134.19.98:26656". This is optional as the script will automatically get all peers & rpcs on chain registry',
-      default: [
-        // default for Oraichain mainnet peers
-        "8b346750e75fd584645192a65c62c7ab88741791@134.209.106.91:26656",
-        "4d0f2d042405abbcac5193206642e1456fe89963@3.134.19.98:26656",
-        "d088d05d7689905819d4381ae30df4075dbb66e7@34.75.13.200:26656",
-        "2c328c41e0ace21c6351265a5a935e1b3f37b62d@35.237.59.125:26656",
-      ],
+      default: [],
     })
     .option("rpcs", {
       type: "array",
@@ -323,7 +365,9 @@ export default async (yargs: Argv) => {
     })
     .option("node-home", {
       type: "string",
-      default: `${process.env.HOME}/.oraid`,
+      description:
+        "The node's local config & data storage directory. If not specified, then the default directory will be collected from the chain registry",
+      default: "",
     });
   try {
     //@ts-ignore
@@ -343,8 +387,9 @@ export default async (yargs: Argv) => {
     } = argv as any;
     console.log(p2ps, rpcs, trustHeightRange, nodeHome);
 
-    const chainInfo = new ChainInfo(chainName);
-    await chainInfo.setupChainInfo(nodeHome, p2ps, rpcs);
+    const chainInfo = new ChainInfo(chainName, nodeHome);
+    const newNodeHome = await chainInfo.fetchChainInfo(p2ps, rpcs);
+    await chainInfo.overrideGenesisFile();
     const { daemonName, codebase } = chainInfo;
     const daemon = await getDaemonPath(
       daemonName,
@@ -353,25 +398,20 @@ export default async (yargs: Argv) => {
     );
     // init node so we have all the config & template files ready for statesync. The --chain-id flag is for temporary only, as we will replace it with the actual genesis file
     shell.exec(
-      `${daemon} init ${MONIKER} --chain-id ${chainName} --home ${nodeHome}`
+      `${daemon} init ${MONIKER} --chain-id ${chainName} --home ${newNodeHome}`
     );
 
     // update config files for statesync config
     const nodeConfigurator = new NodeConfigurator(chainInfo);
-    await nodeConfigurator.configureNodeForStateSync(
-      nodeHome,
-      trustHeightRange
-    );
+    await nodeConfigurator.configureNodeForStateSync(trustHeightRange);
 
     // if unsafe-reset-all is true then we reset chain data to start the statesync process all over again
     if (unsafeResetAll) {
-      shell.exec(`${daemon} tendermint unsafe-reset-all --home ${nodeHome}`);
+      shell.exec(`${daemon} tendermint unsafe-reset-all --home ${newNodeHome}`);
     }
 
     // start the node to start statesync
-    shell.exec(`${daemon} start --home ${nodeHome}`);
-    const isExecError = shell.error();
-    if (isExecError) throw serializeError(isExecError.toString());
+    shell.exec(`${daemon} start --home ${newNodeHome}`);
   } catch (error) {
     console.log(error);
   }
