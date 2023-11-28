@@ -16,7 +16,7 @@ const githubUserContent = "https://raw.githubusercontent.com/";
  */
 export const fetchChainInfo = async (chainName: string): Promise<any> => {
   const res = await fetchRetry(
-    `${githubUserContent}/cosmos/chain-registry/master/${chainName}/chain.json`
+    `${githubUserContent}/oraichain/chain-registry/master/${chainName}/chain.json`
   );
   switch (res.status) {
     case 404:
