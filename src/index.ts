@@ -13,6 +13,7 @@ import gentsCmd from './cmd/gents';
 import genjsCmd from './cmd/genjs';
 import wasmCmd from './cmd/wasm';
 import * as common from './common';
+import networkCmd from './cmd/network';
 
 yargs(hideBin(process.argv))
   .scriptName('cwtools')
@@ -56,6 +57,7 @@ yargs(hideBin(process.argv))
     const parsed = ts.transpile(fs.readFileSync(scriptFile).toString());
     eval(parsed)(argv, common);
   })
+  .command('network', 'Cosmos-based network related commands', networkCmd)
   .option('help', {
     alias: 'h',
     demandOption: false

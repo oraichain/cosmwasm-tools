@@ -172,3 +172,25 @@ export const getWasmOpt = async (binaryenVersion = 112) => {
     throw new Error(`\x1b[31m${e}\x1b[0m`);
   }
 };
+
+export type RetryOptions = {
+  retry?: number;
+  timeout?: number;
+  callback?: (retry: number) => void;
+};
+
+export const fetchRetry = async (url: RequestInfo | URL, opts: RequestInit & RetryOptions = {}) => {
+  let { retry = 3, callback, timeout = 30000, ...init } = opts;
+  init.signal = AbortSignal.timeout(timeout);
+  while (retry > 0) {
+    try {
+      return await fetch(url, init);
+    } catch (e) {
+      callback?.(retry);
+      retry--;
+      if (retry === 0) {
+        throw e;
+      }
+    }
+  }
+};
