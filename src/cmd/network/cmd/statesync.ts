@@ -141,6 +141,7 @@ export class ChainInfo {
   private _daemonName: string;
   private _codebase: any;
   private _nodeHome: string;
+  private _chainId: string;
 
   constructor(public readonly chainName: string, nodeHome: string) {
     this._nodeHome = nodeHome;
@@ -160,6 +161,9 @@ export class ChainInfo {
   get nodeHome(): string {
     return this._nodeHome;
   }
+  get chainId(): string {
+    return this._chainId;
+  }
   private parseP2pPeer(id: string, address: string) {
     return `${id}@${address}`;
   }
@@ -178,12 +182,14 @@ export class ChainInfo {
       peers,
       apis,
       node_home: nodeHome,
+      chain_id: chainId,
     } = await fetchChainInfo(this.chainName);
     console.log(daemonName, codebase, peers, apis);
 
     // TODO: need to validate if the chain info matches the chain name or not. If not => throw error
     this._daemonName = daemonName;
     this._codebase = codebase;
+    this._chainId = chainId;
     // by default, we use node home on chain-registry if not specified
     if (!this._nodeHome) {
       this._nodeHome = parseNodeHomeWithEnvVariable(nodeHome);
@@ -390,15 +396,14 @@ export default async (yargs: Argv) => {
     const chainInfo = new ChainInfo(chainName, nodeHome);
     const newNodeHome = await chainInfo.fetchChainInfo(p2ps, rpcs);
     await chainInfo.overrideGenesisFile();
-    const { daemonName, codebase } = chainInfo;
+    const { daemonName, codebase, chainId } = chainInfo;
     const daemon = await getDaemonPath(
       daemonName,
       codebase.binaries,
       daemonPath
     );
-    // init node so we have all the config & template files ready for statesync. The --chain-id flag is for temporary only, as we will replace it with the actual genesis file
     shell.exec(
-      `${daemon} init ${MONIKER} --chain-id ${chainName} --home ${newNodeHome}`
+      `${daemon} init ${MONIKER} --chain-id ${chainId} --home ${newNodeHome}`
     );
 
     // update config files for statesync config
