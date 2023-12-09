@@ -312,6 +312,14 @@ export class NodeConfigurator {
       `persistent_peers = "${p2pNodes.join(",")}"`,
       configTomlPath
     );
+    // set maximum outbound peers to 0 because we dont want the p2p logs to be too verbose.
+    // We only connect to working nodes on chain registry & custom peers from args
+    shell.sed(
+      "-i",
+      /^max_num_outbound_peers\s*=\s*.*/m,
+      `max_num_outbound_peers = 0`,
+      configTomlPath
+    );
     shell.sed(
       "-i",
       /^rpc_servers\s*=\s*.*/m,
@@ -374,6 +382,11 @@ export default async (yargs: Argv) => {
       description:
         "The node's local config & data storage directory. If not specified, then the default directory will be collected from the chain registry",
       default: "",
+    })
+    .option("clear", {
+      type: "boolean",
+      description: "Clear the old directory before starting",
+      default: false,
     });
   try {
     //@ts-ignore
@@ -390,6 +403,7 @@ export default async (yargs: Argv) => {
       nodeHome,
       daemonPath,
       unsafeResetAll,
+      clear,
     } = argv as any;
     console.log(p2ps, rpcs, trustHeightRange, nodeHome);
 
@@ -402,6 +416,12 @@ export default async (yargs: Argv) => {
       codebase.binaries,
       daemonPath
     );
+
+    // clear the directory before init
+    if (clear) {
+      shell.rm(newNodeHome);
+    }
+
     shell.exec(
       `${daemon} init ${MONIKER} --chain-id ${chainId} --home ${newNodeHome}`
     );
