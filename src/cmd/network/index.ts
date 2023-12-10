@@ -1,5 +1,6 @@
 import { Argv } from "yargs";
 import statesyncCmd from "./cmd/statesync";
+import forkCmd from "./cmd/fork";
 
 export default (yargs: Argv) => {
   yargs
@@ -8,5 +9,6 @@ export default (yargs: Argv) => {
       "statesync",
       "Run a state sync of a cosmos-based network",
       statesyncCmd
-    );
+    )
+    .command("fork", "Fork a cosmos-based network", forkCmd);
 };

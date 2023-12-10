@@ -7,7 +7,7 @@ import os from "os";
 import Downloader from "nodejs-file-downloader";
 import path from "path";
 
-const MONIKER = "moniker";
+export const MONIKER = "moniker";
 const githubUserContent = "https://raw.githubusercontent.com/";
 
 export const parseNodeHomeWithEnvVariable = (nodeHome: string): string => {
@@ -86,24 +86,11 @@ export const downloadDaemon = async (
   return filePath;
 };
 
-export const getDaemonPath = async (
-  daemonName: string,
-  binaries: any,
-  daemonPath?: string
-) => {
-  // fetch chain info & download binary based on machine architecture
-  const localDaemonPath = shell.which(daemonName);
-  let daemon = daemonPath
-    ? daemonPath
-    : localDaemonPath
-    ? localDaemonPath.toString()
-    : await downloadDaemon(binaries, daemonName);
-  // if empty then it means the running machine does not have the binary downloaded yet. Make an attempt to download it & put it in daemonPath. If daemonPath not specified then we use default location, which is $HOME/<daemon-name>
-  console.log("daemon: ", daemon);
-  return daemon;
-};
+export interface Callable {
+  isCallable: () => Promise<boolean>;
+}
 
-export class RpcNode {
+export class RpcNode implements Callable {
   public rpcUrl: string;
   public tmClient: Tendermint37Client;
   private constructor(rpcUrl: string) {
@@ -135,15 +122,56 @@ export class RpcNode {
   }
 }
 
+export class LcdNode implements Callable {
+  constructor(public readonly lcdUrl: string) {}
+  public async isCallable(): Promise<boolean> {
+    try {
+      const res = await fetchRetry(`${this.lcdUrl}`);
+      const data: any = await res.json();
+      // code 12 means not implemented -> lcd is working
+      if (data.code && data.code === 12) return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  public async queryModuleAccount(moduleName: string): Promise<string> {
+    const res = await fetchRetry(
+      `${this.lcdUrl}/cosmos/auth/v1beta1/module_accounts/${moduleName}`
+    );
+    const result = await res.json();
+    if (result.account) return result.account.base_account.address;
+    throw serializeError("Module name is not found");
+  }
+
+  // public async queryAccountBalanceByDenom(
+  //   address: string,
+  //   denom: string
+  // ): Promise<string> {
+  //   const res = await fetchRetry(
+  //     `${this.lcdUrl}/cosmos/bank/v1beta1/balances/${address}/by_denom?denom=${denom}`
+  //   );
+  //   const result = await res.json();
+  //   if (result.balance) return result.balance.amount;
+  //   throw serializeError(`Error getting account balance by denom: ${result}`);
+  // }
+}
+
 export class ChainInfo {
   private _p2pNodes: string[];
   private _rpcs: RpcNode[];
+  private _lcds: LcdNode[];
   private _daemonName: string;
   private _codebase: any;
   private _nodeHome: string;
   private _chainId: string;
+  private _bech32Prefix: string;
+  private _daemonPath: string;
+  private _stakingTokenDenom: string;
 
-  constructor(public readonly chainName: string, nodeHome: string) {
+  public static instance: ChainInfo;
+
+  private constructor(public readonly chainName: string, nodeHome: string) {
     this._nodeHome = nodeHome;
   }
   get p2pNodes(): string[] {
@@ -152,8 +180,8 @@ export class ChainInfo {
   get rpcs(): RpcNode[] {
     return this._rpcs;
   }
-  get daemonName(): string {
-    return this._daemonName;
+  get lcds(): LcdNode[] {
+    return this._lcds;
   }
   get codebase(): any {
     return this._codebase;
@@ -164,6 +192,15 @@ export class ChainInfo {
   get chainId(): string {
     return this._chainId;
   }
+  get bech32Prefix(): string {
+    return this._bech32Prefix;
+  }
+  get daemonPath(): string {
+    return this._daemonPath;
+  }
+  get stakingTokenDenom(): string {
+    return this._stakingTokenDenom;
+  }
   private parseP2pPeer(id: string, address: string) {
     return `${id}@${address}`;
   }
@@ -171,11 +208,26 @@ export class ChainInfo {
     return address;
   }
 
-  // fetch chain info from chain registry & store into the instance. Then, return the new node home from the chain info if not specified
-  async fetchChainInfo(
+  static async create(
+    chainName: string,
+    nodeHome: string,
+    additionalP2ps: string[],
+    additionalRpcs: string[],
+    preferredDaemonPath?: string
+  ): Promise<ChainInfo> {
+    const chainInfo = new ChainInfo(chainName, nodeHome);
+    await chainInfo.parseChainInfo(additionalP2ps, additionalRpcs);
+    await chainInfo.getDaemonPath(preferredDaemonPath);
+    await chainInfo.overrideGenesisFile();
+    this.instance = chainInfo;
+    return chainInfo;
+  }
+
+  // fetch chain info from chain registry & store into the instance
+  async parseChainInfo(
     additionalP2ps: string[],
     additionalRpcs: string[]
-  ): Promise<string> {
+  ): Promise<void> {
     const {
       daemon_name: daemonName,
       codebase,
@@ -183,19 +235,24 @@ export class ChainInfo {
       apis,
       node_home: nodeHome,
       chain_id: chainId,
+      bech32_prefix: bech32Prefix,
+      staking,
     } = await fetchChainInfo(this.chainName);
-    console.log(daemonName, codebase, peers, apis);
+    // console.log(daemonName, codebase, peers, apis);
 
     // TODO: need to validate if the chain info matches the chain name or not. If not => throw error
     this._daemonName = daemonName;
     this._codebase = codebase;
     this._chainId = chainId;
-    // by default, we use node home on chain-registry if not specified
+    this._bech32Prefix = bech32Prefix;
+    // main denom token is by default the first element of the array
+    this._stakingTokenDenom = staking.staking_tokens[0].denom;
+    // by default, we use node home on chain-registry if not specified. on chain registry we tend to use env var for node home
     if (!this._nodeHome) {
       this._nodeHome = parseNodeHomeWithEnvVariable(nodeHome);
     }
     const { persistent_peers: p2pNodes } = peers;
-    const { rpc: rpcs } = apis;
+    const { rpc: rpcs, rest: lcds } = apis;
     this._p2pNodes = p2pNodes
       .map((persistent: any) =>
         this.parseP2pPeer(persistent.id, persistent.address)
@@ -215,13 +272,22 @@ export class ChainInfo {
       })
       .filter((rpc) => rpc);
 
-    return this._nodeHome;
+    this._lcds = lcds.map(
+      (lcd: { address: string; provider: string }) => new LcdNode(lcd.address)
+    );
+
+    // update & store daemon path
   }
 
   async getGoodPeer() {
     return this.rpcs.find(async (instance) => {
-      const result = await instance.isCallable();
-      return result;
+      return instance.isCallable();
+    });
+  }
+
+  async getGoodLcd() {
+    return this._lcds.find(async (instance) => {
+      return instance.isCallable();
     });
   }
 
@@ -239,6 +305,19 @@ export class ChainInfo {
       .ShellString(JSON.stringify(genesisData))
       .to(`${this.nodeHome}/config/genesis.json`);
   }
+
+  private getDaemonPath = async (preferredDaemonPath?: string) => {
+    // fetch chain info & download binary based on machine architecture
+    const localDaemonPath = shell.which(this._daemonName);
+    let daemon = preferredDaemonPath
+      ? preferredDaemonPath
+      : localDaemonPath
+      ? localDaemonPath.toString()
+      : await downloadDaemon(this.codebase.binaries, this._daemonName);
+    // if empty then it means the running machine does not have the binary downloaded yet. Make an attempt to download it & put it in daemonPath. If daemonPath not specified then we use default location, which is $HOME/<daemon-name>
+    console.log("daemon: ", daemon);
+    this._daemonPath = daemon;
+  };
 }
 
 export class NodeConfigurator {
@@ -401,25 +480,23 @@ export default async (yargs: Argv) => {
       rpcs,
       trustHeightRange,
       nodeHome,
-      daemonPath,
+      daemonPath: preferredDaemonPath,
       unsafeResetAll,
       clear,
     } = argv as any;
     console.log(p2ps, rpcs, trustHeightRange, nodeHome);
 
-    const chainInfo = new ChainInfo(chainName, nodeHome);
-    const newNodeHome = await chainInfo.fetchChainInfo(p2ps, rpcs);
-    await chainInfo.overrideGenesisFile();
-    const { daemonName, codebase, chainId } = chainInfo;
-    const daemon = await getDaemonPath(
-      daemonName,
-      codebase.binaries,
-      daemonPath
+    const chainInfo = await ChainInfo.create(
+      chainName,
+      nodeHome,
+      p2ps,
+      rpcs,
+      preferredDaemonPath
     );
-
+    const { daemonPath: daemon, nodeHome: newNodeHome, chainId } = chainInfo;
     // clear the directory before init
     if (clear) {
-      shell.rm(newNodeHome);
+      shell.rm("-r", newNodeHome);
     }
 
     shell.exec(
