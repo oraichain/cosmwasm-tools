@@ -172,3 +172,5 @@ export default async (yargs: Argv) => {
     console.log(error);
   }
 };
+
+// eg: yarn start network fork oraichain --forkHome ~/.oraid-fork --exported-genesis-path ~/.oraid-sync/config/export-genesis.json
