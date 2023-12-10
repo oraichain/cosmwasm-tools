@@ -155,6 +155,7 @@ export default async (yargs: Argv) => {
     // we have to get amount from exported genesis state of sync node because the balance on lcd will keep changing
     const bondedTokenPoolBalanceAmount =
       bondedTokenAccountBalance.coins[0].amount;
+    // we gentx with bonded token pool from sync node so that the bonded amount of the fork node matches the total bonding of the sync node
     shell.exec(
       `${daemon} gentx ${walletName} ${bondedTokenPoolBalanceAmount}${stakingTokenDenom} --chain-id ${chainId} ${homeAndKeyringFlags}`
     );
