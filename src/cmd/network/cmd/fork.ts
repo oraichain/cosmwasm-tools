@@ -134,11 +134,15 @@ export class GenesisReader {
     return this.readBondedTokenPoolAmount(bondedTokenPoolModuleAccount);
   }
 
-  async readBondedTokenPoolAmount(bondedTokenPoolModuleAccount: string) {
+  private async readBondedTokenPoolAmount(
+    bondedTokenPoolModuleAccount: string
+  ) {
     return this.readBalanceOfAddress(bondedTokenPoolModuleAccount);
   }
 
-  async readUnbondingDelegationsWithCache(unbondingDelegationsAddress: string) {
+  private async readUnbondingDelegationsWithCache(
+    unbondingDelegationsAddress: string
+  ) {
     if (this.cache) {
       return this.genesisStateData[this.stakingTokenDenom][
         notBondedTokenPoolModuleName
