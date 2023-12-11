@@ -8,19 +8,37 @@ import { ChainInfo, MONIKER } from "./statesync";
 import fs from "fs";
 import json from "big-json";
 
-const exportGenesisPath = "config/export-genesis.json";
+const defaultExportGenesisPath = "config/export-genesis.json";
+const completedForkGenesisPath = "config/completed-fork-genesis.json";
 const genesisAmount = "1000000000000000";
 const walletName = "wallet";
+const bondedTokenPoolModuleName = "bonded_tokens_pool";
+const notBondedTokenPoolModuleName = "not_bonded_tokens_pool";
+const defaultSyncExportedGenesisCachePath =
+  "config/sync-genesis-state-cache.json";
+
+export interface GenesisCache {
+  [stakingTokenDenom: string]: {
+    bank: {
+      totalBalances: string;
+    };
+    [bondedTokenPoolModuleName]: string;
+    [notBondedTokenPoolModuleName]: string;
+    totalSupplyIndex: number;
+  };
+}
 
 const exportGenesisState = (
   daemon: string,
   home: string,
-  destinationPath: string
+  exportGenesisPath: string
 ) => {
   // > /dev/null to omit logs in terminal
+  const fullGenesisPath = path.join(home, exportGenesisPath);
   shell.exec(
-    `${daemon} --home ${home} export 2>&1 | tee ${destinationPath} > /dev/null`
+    `${daemon} --home ${home} export 2>&1 | tee ${fullGenesisPath} > /dev/null`
   );
+  return fullGenesisPath;
 };
 
 const readLargeJsonFile = async (genesisPath: string): Promise<any> => {
@@ -36,22 +54,102 @@ const readLargeJsonFile = async (genesisPath: string): Promise<any> => {
   });
 };
 
-// export class GenesisModifier {
-//   constructor(public readonly genesisData: any) {}
-//   readLargeBalances = async () => {
-//     let totalBalances = 0;
-//     for (let balance of this.genesisData.app_state.bank.balances) {
-//       const coin = balance.coins.find((coin: Coin) => coin.denom === "orai");
-//       if (!coin) continue;
-//       totalBalances += parseInt(coin.amount);
-//     }
-//     console.log(
-//       "Finished collecting the real total supply of the orai token with total balances: ",
-//       totalBalances
-//     );
-//     return totalBalances.toString();
-//   };
-// }
+export class GenesisReader {
+  static instance: GenesisReader;
+  constructor(
+    public readonly genesisStateData: any,
+    public readonly stakingTokenDenom: string,
+    public readonly cache: boolean
+  ) {}
+
+  static async create(
+    genesisStatePath: string,
+    stakingTokenDenom: string,
+    genesisStateCachePath?: string
+  ): Promise<GenesisReader> {
+    let genesis: any;
+    let cache: boolean = false;
+    // read from cache instead for faster access
+    if (genesisStateCachePath && shell.find(genesisStateCachePath).length > 0) {
+      genesis = await readLargeJsonFile(genesisStateCachePath);
+      console.log("genesis caching: ", genesis);
+      cache = true;
+    } else genesis = await readLargeJsonFile(genesisStatePath);
+    const instance = new GenesisReader(genesis, stakingTokenDenom, cache);
+    this.instance = instance;
+    return instance;
+  }
+
+  private async readBalanceOfAddress(address: string): Promise<string> {
+    const bondedTokenAccountBalance: { address: string; coins: Coin[] } =
+      this.genesisStateData.app_state.bank.balances.find(
+        (balance: any) => balance.address === address
+      );
+    if (!bondedTokenAccountBalance) {
+      throw serializeError(
+        "Cannot find bonded token module account balance in the genesis file"
+      );
+    }
+    // we have to get amount from exported genesis state of sync node because the balance on lcd will keep changing
+    return bondedTokenAccountBalance.coins.find(
+      (coin) => coin.denom === this.stakingTokenDenom
+    ).amount;
+  }
+
+  async readTotalBalancesWithCache() {
+    if (this.cache) {
+      return this.genesisStateData[this.stakingTokenDenom].bank
+        .totalBalances as string;
+    }
+    return this.readTotalBalances();
+  }
+
+  async readTotalBalances() {
+    let totalBalances = 0;
+    for (let balance of this.genesisStateData.app_state.bank.balances) {
+      const coin = (balance.coins as Coin[]).find(
+        (coin) => coin.denom === this.stakingTokenDenom
+      );
+      if (!coin) continue;
+      totalBalances += parseInt(coin.amount);
+    }
+    return totalBalances.toString();
+  }
+
+  async readBondedTokenPoolAmountWithCache(
+    bondedTokenPoolModuleAccount: string
+  ) {
+    if (this.cache) {
+      return this.genesisStateData[this.stakingTokenDenom][
+        bondedTokenPoolModuleName
+      ] as string;
+    }
+    return this.readBondedTokenPoolAmount(bondedTokenPoolModuleAccount);
+  }
+
+  async readBondedTokenPoolAmount(bondedTokenPoolModuleAccount: string) {
+    return this.readBalanceOfAddress(bondedTokenPoolModuleAccount);
+  }
+
+  async readUnbondingDelegationsWithCache(unbondingDelegationsAddress: string) {
+    if (this.cache) {
+      return this.genesisStateData[this.stakingTokenDenom][
+        notBondedTokenPoolModuleName
+      ] as string;
+    }
+    return this.readBalanceOfAddress(unbondingDelegationsAddress);
+  }
+
+  async readTotalSupplyIndexWithCache() {
+    if (this.cache)
+      return this.genesisStateData[this.stakingTokenDenom][
+        "totalSupplyIndex"
+      ] as number;
+    return (this.genesisStateData.app_state.bank.supply as Coin[]).findIndex(
+      (balance) => balance.denom === this.stakingTokenDenom
+    );
+  }
+}
 
 export default async (yargs: Argv) => {
   const { argv } = yargs
@@ -65,7 +163,7 @@ export default async (yargs: Argv) => {
       description:
         "statesync node location so we can export its genesis state for forking. You must either specify sync-home or exported-genesis-path to fork the node",
     })
-    .option("exported-genesis-path", {
+    .option("exported-sync-genesis-path", {
       type: "string",
       description:
         "URI of your exported genesis path. If you dont specify this, then you must specify your statesync node.",
@@ -78,22 +176,27 @@ export default async (yargs: Argv) => {
       type: "string",
       description:
         "your local Go binary path of the network. Eg: /home/go/oraid for Oraichain; /home/go/gaiad for Cosmos. This is optional",
+    })
+    .option("clear-cache", {
+      type: "boolean",
+      description:
+        "If true, then the exported sync genesis state cache will be cleared, and the program will re-read the states from the original exported genesis file",
+      default: false,
     });
 
   try {
     //@ts-ignore
     const [chainName] = argv._.slice(-1);
     //@ts-ignore
-    const { syncHome, exportedGenesisPath, daemonPath } = argv;
+    const { syncHome, exportedSyncGenesisPath, daemonPath, clearCache } = argv;
     //@ts-ignore
     const { forkHome: expectedForkHome } = argv;
     //@ts-ignore
     const mnemonic = argv.MNEMONIC;
-    let finalExportedGenesisPath = exportedGenesisPath;
     if (!expectedForkHome) {
       throw serializeError("You need to specify your fork node home");
     }
-    if (!syncHome && !exportedGenesisPath) {
+    if (!syncHome && !exportedSyncGenesisPath) {
       throw serializeError(
         "You need to specify either sync-home or exported-genesis-uri"
       );
@@ -114,22 +217,59 @@ export default async (yargs: Argv) => {
       chainId,
       stakingTokenDenom,
     } = chainInfo;
-
-    // export our statesync genesis state if sync home is specified
-    if (syncHome && !finalExportedGenesisPath) {
-      finalExportedGenesisPath = path.join(syncHome, exportGenesisPath);
-      exportGenesisState(
-        chainInfo.daemonPath,
-        syncHome,
-        finalExportedGenesisPath
-      );
-    }
-    const genesis = await readLargeJsonFile(finalExportedGenesisPath);
-    // reset fork node to start over
-    shell.rm("-r", forkHome);
     const homeFlag = `--home ${forkHome}`;
     const keyringBackendFlag = `--keyring-backend test`;
     const homeAndKeyringFlags = `${homeFlag} ${keyringBackendFlag}`;
+    // export our statesync genesis state if sync home is specified
+    let finalExportedSyncGenesisPath = exportedSyncGenesisPath;
+    if (syncHome && !finalExportedSyncGenesisPath) {
+      finalExportedSyncGenesisPath = exportGenesisState(
+        chainInfo.daemonPath,
+        syncHome,
+        defaultExportGenesisPath
+      );
+    }
+    const syncGenesisCachePath = path.join(
+      forkHome,
+      defaultSyncExportedGenesisCachePath
+    );
+    if (clearCache) shell.rm(syncGenesisCachePath);
+    const syncGenesisReader = await GenesisReader.create(
+      finalExportedSyncGenesisPath,
+      stakingTokenDenom,
+      syncGenesisCachePath
+    );
+    const goodLcd = await chainInfo.getGoodLcd();
+    const bondedTokenPoolModuleAccount = await goodLcd.queryModuleAccount(
+      bondedTokenPoolModuleName
+    );
+    const notBondedTokenPoolModuleAccount = await goodLcd.queryModuleAccount(
+      notBondedTokenPoolModuleName
+    );
+    const bondedTokenPoolAmount =
+      await syncGenesisReader.readBondedTokenPoolAmountWithCache(
+        bondedTokenPoolModuleAccount
+      );
+    const totalBalances = await syncGenesisReader.readTotalBalancesWithCache();
+    const totalUnbondingDelegations =
+      await syncGenesisReader.readUnbondingDelegationsWithCache(
+        notBondedTokenPoolModuleAccount
+      );
+    const totalSupplyIndex =
+      await syncGenesisReader.readTotalSupplyIndexWithCache();
+
+    const syncGenesisStateCache: GenesisCache = {
+      [stakingTokenDenom]: {
+        bank: { totalBalances },
+        [bondedTokenPoolModuleName]: bondedTokenPoolAmount,
+        [notBondedTokenPoolModuleName]: totalUnbondingDelegations,
+        totalSupplyIndex,
+      },
+    };
+    shell.echo(JSON.stringify(syncGenesisStateCache)).to(syncGenesisCachePath);
+
+    // reset fork node to start over
+    shell.rm("-r", forkHome);
     // init fork node
     shell.exec(`${daemon} init ${MONIKER} --chain-id ${chainId} ${homeFlag}`);
     shell.exec(
@@ -138,36 +278,78 @@ export default async (yargs: Argv) => {
     shell.exec(
       `${daemon} add-genesis-account ${walletName} ${genesisAmount}${stakingTokenDenom} ${homeAndKeyringFlags}`
     );
-    const goodLcd = await chainInfo.getGoodLcd();
-    const bondedTokenPoolModuleAccount = await goodLcd.queryModuleAccount(
-      "bonded_tokens_pool"
-    );
-    const bondedTokenAccountBalance: { address: string; coins: Coin[] } =
-      genesis.app_state.bank.balances.find(
-        (balance: any) => balance.address === bondedTokenPoolModuleAccount
-      );
-    if (!bondedTokenAccountBalance) {
-      throw serializeError(
-        "Cannot find bonded token module account balance in the genesis file"
-      );
-    }
-    console.log("bonded token account balance: ", bondedTokenAccountBalance);
-    // we have to get amount from exported genesis state of sync node because the balance on lcd will keep changing
-    const bondedTokenPoolBalanceAmount = bondedTokenAccountBalance.coins.find(
-      (coin) => coin.denom === stakingTokenDenom
-    ).amount;
     // we gentx with bonded token pool from sync node so that the bonded amount of the fork node matches the total bonding of the sync node
     shell.exec(
-      `${daemon} gentx ${walletName} ${bondedTokenPoolBalanceAmount}${stakingTokenDenom} --chain-id ${chainId} ${homeAndKeyringFlags}`
+      `${daemon} gentx ${walletName} ${bondedTokenPoolAmount}${stakingTokenDenom} --chain-id ${chainId} ${homeAndKeyringFlags}`
     );
     shell.exec(`${daemon} collect-gentxs ${homeFlag}`);
     shell.exec(`${daemon} validate-genesis ${homeFlag}`);
 
-    const wallet = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, {
-      hdPaths: [stringToPath(process.env.HD_PATH)],
-      prefix: chainInfo.bech32Prefix,
+    // start the fork for a couple blocks and stop it again so we can export the fork's genesis state
+    // the purpose is to replace the fork's staking & consensus states to the sync's states so we can produce new blocks with the sync's states
+    const execution = shell.exec(`${daemon} start ${homeFlag}`, {
+      async: true,
     });
-    const [firstAccount] = await wallet.getAccounts();
+    await new Promise((resolve) => setTimeout(resolve, 10000));
+    execution.kill();
+
+    // export fork's genesis state so we can start extracting its consensus state
+    const forkExportGenesisPath = exportGenesisState(
+      daemon,
+      forkHome,
+      defaultExportGenesisPath
+    );
+    // read fork's exported genesis state and get ready to extract its consensus state
+    const forkGenesisState = await readLargeJsonFile(forkExportGenesisPath);
+    console.log("fork genesis state: ", forkGenesisState);
+
+    // we get consensus state from our fork genesis state and apply it to the sync genesis state for the fork
+    const slashing = JSON.stringify(forkGenesisState.app_state.slashing);
+    const currentDate = new Date();
+    const nextYearDate = new Date(currentDate);
+    nextYearDate.setFullYear(currentDate.getFullYear() + 1);
+    forkGenesisState.app_state.staking.unbonding_delegations = [
+      {
+        delegator_address:
+          forkGenesisState.app_state.staking.delegations[0].delegator_address,
+        validator_address:
+          forkGenesisState.app_state.staking.delegations[0].validator_address,
+        entries: [
+          {
+            balance: totalUnbondingDelegations,
+            completion_time: nextYearDate.toISOString(),
+            creation_height: "9305417",
+            initial_balance: totalUnbondingDelegations,
+          },
+        ],
+      },
+    ];
+    const staking = JSON.stringify(forkGenesisState.app_state.staking);
+    const validators = JSON.stringify(forkGenesisState.validators);
+    // TODO: add change admin of multisig to gain full control of the contracts (for Oraichain network only only)
+    // const modifiedMultisigState = `.app_state.wasm.contracts[.app_state.wasm.contracts| map(.contract_address == "${groupAddress}") | index(true)].contract_state = [{"key":"00076D656D62657273${devSharedHexBytes}","value":"Mw=="},{"key":"746F74616C","value":"Mw=="},{"key":"61646D696E","value":"${adminMultiSigInBase64}"}]`;
+
+    const jq = `'.app_state.slashing = ${slashing} | .app_state.staking = ${staking} | .validators = ${validators} | .app_state.staking.params.unbonding_time = "10s" | .app_state.gov.voting_params.voting_period = "60s" | .app_state.gov.deposit_params.min_deposit[0].amount = "1" | .app_state.gov.tally_params.quorum = "0.000000000000000000" | .app_state.gov.tally_params.threshold = "0.000000000000000000" | .app_state.mint.params.inflation_min = "0.500000000000000000" | .app_state.bank.supply[${totalSupplyIndex}].amount = "${totalBalances}" | .chain_id = "${chainId}-fork"'`;
+
+    shell.exec(
+      `jq ${jq} ${finalExportedSyncGenesisPath} 2>&1 | tee ${path.join(
+        forkHome,
+        completedForkGenesisPath
+      )} > /dev/null`
+    );
+
+    // reset all so that we can apply the new genesis to the fork node
+    shell.exec(`${daemon} tendermint unsafe-reset-all ${homeFlag}`);
+
+    // start the program without checking invariants (we dont need to). Remember that the first few blocks will take a very long time (about 30 mins) to produce
+    // once done, then the node will start & produce blocks fast
+    shell.exec(`${daemon} start --x-crisis-skip-assert-invariants ${homeFlag}`);
+
+    // const wallet = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, {
+    //   hdPaths: [stringToPath(process.env.HD_PATH)],
+    //   prefix: chainInfo.bech32Prefix,
+    // });
+    // const [firstAccount] = await wallet.getAccounts();
 
     // read statesync genesis file
   } catch (error) {
@@ -175,4 +357,4 @@ export default async (yargs: Argv) => {
   }
 };
 
-// eg: yarn start network fork oraichain --forkHome ~/.oraid-fork --exported-genesis-path ~/.oraid-sync/config/export-genesis.json
+// eg: yarn start network fork oraichain --fork-home ~/.oraid-fork --exported-sync-genesis-path ~/.oraid-sync/config/export-genesis.json
