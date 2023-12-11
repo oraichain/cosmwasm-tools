@@ -9,7 +9,7 @@ import fs from "fs";
 import json from "big-json";
 
 const defaultExportGenesisPath = "config/export-genesis.json";
-const completedForkGenesisPath = "config/completed-fork-genesis.json";
+const completedForkGenesisPath = "config/genesis.json";
 const genesisAmount = "1000000000000000";
 const walletName = "wallet";
 const bondedTokenPoolModuleName = "bonded_tokens_pool";
@@ -56,6 +56,8 @@ const readLargeJsonFile = async (genesisPath: string): Promise<any> => {
 
 export class GenesisReader {
   static instance: GenesisReader;
+  // inject chain info to simplify the reader process
+  private chainInfo: ChainInfo;
   constructor(
     public readonly genesisStateData: any,
     public readonly stakingTokenDenom: string,
@@ -80,6 +82,11 @@ export class GenesisReader {
     return instance;
   }
 
+  withChainInfo(chainInfo: ChainInfo): GenesisReader {
+    this.chainInfo = chainInfo;
+    return this;
+  }
+
   private async readBalanceOfAddress(address: string): Promise<string> {
     const bondedTokenAccountBalance: { address: string; coins: Coin[] } =
       this.genesisStateData.app_state.bank.balances.find(
@@ -96,7 +103,7 @@ export class GenesisReader {
     ).amount;
   }
 
-  async readTotalBalancesWithCache() {
+  private async readTotalBalancesWithCache() {
     if (this.cache) {
       return this.genesisStateData[this.stakingTokenDenom].bank
         .totalBalances as string;
@@ -104,7 +111,7 @@ export class GenesisReader {
     return this.readTotalBalances();
   }
 
-  async readTotalBalances() {
+  private async readTotalBalances() {
     let totalBalances = 0;
     for (let balance of this.genesisStateData.app_state.bank.balances) {
       const coin = (balance.coins as Coin[]).find(
@@ -116,7 +123,7 @@ export class GenesisReader {
     return totalBalances.toString();
   }
 
-  async readBondedTokenPoolAmountWithCache(
+  private async readBondedTokenPoolAmountWithCache(
     bondedTokenPoolModuleAccount: string
   ) {
     if (this.cache) {
@@ -140,7 +147,7 @@ export class GenesisReader {
     return this.readBalanceOfAddress(unbondingDelegationsAddress);
   }
 
-  async readTotalSupplyIndexWithCache() {
+  private async readTotalSupplyIndexWithCache() {
     if (this.cache)
       return this.genesisStateData[this.stakingTokenDenom][
         "totalSupplyIndex"
@@ -148,6 +155,39 @@ export class GenesisReader {
     return (this.genesisStateData.app_state.bank.supply as Coin[]).findIndex(
       (balance) => balance.denom === this.stakingTokenDenom
     );
+  }
+
+  async readGenesisData() {
+    if (!this.chainInfo)
+      throw serializeError(
+        "Empty chain info. To call this function, you need to inject chainInfo object first by calling withChainInfo"
+      );
+    const goodLcd = await this.chainInfo.getGoodLcd();
+    const bondedTokenPoolModuleAccount = await goodLcd.queryModuleAccount(
+      bondedTokenPoolModuleName
+    );
+    const notBondedTokenPoolModuleAccount = await goodLcd.queryModuleAccount(
+      notBondedTokenPoolModuleName
+    );
+    const bondedTokenPoolAmount = await this.readBondedTokenPoolAmountWithCache(
+      bondedTokenPoolModuleAccount
+    );
+    const totalBalances = await this.readTotalBalancesWithCache();
+    const totalUnbondingDelegations =
+      await this.readUnbondingDelegationsWithCache(
+        notBondedTokenPoolModuleAccount
+      );
+    const totalSupplyIndex = await this.readTotalSupplyIndexWithCache();
+
+    const syncGenesisStateCache: GenesisCache = {
+      [this.stakingTokenDenom]: {
+        bank: { totalBalances },
+        [bondedTokenPoolModuleName]: bondedTokenPoolAmount,
+        [notBondedTokenPoolModuleName]: totalUnbondingDelegations,
+        totalSupplyIndex,
+      },
+    };
+    return syncGenesisStateCache;
   }
 }
 
@@ -239,33 +279,9 @@ export default async (yargs: Argv) => {
       stakingTokenDenom,
       syncGenesisCachePath
     );
-    const goodLcd = await chainInfo.getGoodLcd();
-    const bondedTokenPoolModuleAccount = await goodLcd.queryModuleAccount(
-      bondedTokenPoolModuleName
-    );
-    const notBondedTokenPoolModuleAccount = await goodLcd.queryModuleAccount(
-      notBondedTokenPoolModuleName
-    );
-    const bondedTokenPoolAmount =
-      await syncGenesisReader.readBondedTokenPoolAmountWithCache(
-        bondedTokenPoolModuleAccount
-      );
-    const totalBalances = await syncGenesisReader.readTotalBalancesWithCache();
-    const totalUnbondingDelegations =
-      await syncGenesisReader.readUnbondingDelegationsWithCache(
-        notBondedTokenPoolModuleAccount
-      );
-    const totalSupplyIndex =
-      await syncGenesisReader.readTotalSupplyIndexWithCache();
-
-    const syncGenesisStateCache: GenesisCache = {
-      [stakingTokenDenom]: {
-        bank: { totalBalances },
-        [bondedTokenPoolModuleName]: bondedTokenPoolAmount,
-        [notBondedTokenPoolModuleName]: totalUnbondingDelegations,
-        totalSupplyIndex,
-      },
-    };
+    const syncGenesisStateCache = (
+      await syncGenesisReader.withChainInfo(chainInfo).readGenesisData()
+    )[stakingTokenDenom];
     shell.echo(JSON.stringify(syncGenesisStateCache)).to(syncGenesisCachePath);
 
     // reset fork node to start over
@@ -280,17 +296,17 @@ export default async (yargs: Argv) => {
     );
     // we gentx with bonded token pool from sync node so that the bonded amount of the fork node matches the total bonding of the sync node
     shell.exec(
-      `${daemon} gentx ${walletName} ${bondedTokenPoolAmount}${stakingTokenDenom} --chain-id ${chainId} ${homeAndKeyringFlags}`
+      `${daemon} gentx ${walletName} ${syncGenesisStateCache[bondedTokenPoolModuleName]}${stakingTokenDenom} --chain-id ${chainId} ${homeAndKeyringFlags}`
     );
     shell.exec(`${daemon} collect-gentxs ${homeFlag}`);
     shell.exec(`${daemon} validate-genesis ${homeFlag}`);
 
-    // start the fork for a couple blocks and stop it again so we can export the fork's genesis state
+    // start the fork for a couple blocks and stop it after a few blocks so we can export the fork's genesis state
     // the purpose is to replace the fork's staking & consensus states to the sync's states so we can produce new blocks with the sync's states
     const execution = shell.exec(`${daemon} start ${homeFlag}`, {
       async: true,
     });
-    await new Promise((resolve) => setTimeout(resolve, 10000));
+    await new Promise((resolve) => setTimeout(resolve, 15000));
     execution.kill();
 
     // export fork's genesis state so we can start extracting its consensus state
@@ -316,10 +332,10 @@ export default async (yargs: Argv) => {
           forkGenesisState.app_state.staking.delegations[0].validator_address,
         entries: [
           {
-            balance: totalUnbondingDelegations,
+            balance: syncGenesisStateCache[notBondedTokenPoolModuleName],
             completion_time: nextYearDate.toISOString(),
             creation_height: "9305417",
-            initial_balance: totalUnbondingDelegations,
+            initial_balance: syncGenesisStateCache[bondedTokenPoolModuleName],
           },
         ],
       },
@@ -329,8 +345,9 @@ export default async (yargs: Argv) => {
     // TODO: add change admin of multisig to gain full control of the contracts (for Oraichain network only only)
     // const modifiedMultisigState = `.app_state.wasm.contracts[.app_state.wasm.contracts| map(.contract_address == "${groupAddress}") | index(true)].contract_state = [{"key":"00076D656D62657273${devSharedHexBytes}","value":"Mw=="},{"key":"746F74616C","value":"Mw=="},{"key":"61646D696E","value":"${adminMultiSigInBase64}"}]`;
 
-    const jq = `'.app_state.slashing = ${slashing} | .app_state.staking = ${staking} | .validators = ${validators} | .app_state.staking.params.unbonding_time = "10s" | .app_state.gov.voting_params.voting_period = "60s" | .app_state.gov.deposit_params.min_deposit[0].amount = "1" | .app_state.gov.tally_params.quorum = "0.000000000000000000" | .app_state.gov.tally_params.threshold = "0.000000000000000000" | .app_state.mint.params.inflation_min = "0.500000000000000000" | .app_state.bank.supply[${totalSupplyIndex}].amount = "${totalBalances}" | .chain_id = "${chainId}-fork"'`;
+    const jq = `'.app_state.slashing = ${slashing} | .app_state.staking = ${staking} | .validators = ${validators} | .app_state.staking.params.unbonding_time = "10s" | .app_state.gov.voting_params.voting_period = "60s" | .app_state.gov.deposit_params.min_deposit[0].amount = "1" | .app_state.gov.tally_params.quorum = "0.000000000000000000" | .app_state.gov.tally_params.threshold = "0.000000000000000000" | .app_state.mint.params.inflation_min = "0.500000000000000000" | .app_state.bank.supply[${syncGenesisStateCache.totalSupplyIndex}].amount = "${syncGenesisStateCache.bank.totalBalances}" | .chain_id = "${chainId}-fork"'`;
 
+    // apply all the changes to the sync genesis state so that we can start producing blocks with the sync state
     shell.exec(
       `jq ${jq} ${finalExportedSyncGenesisPath} 2>&1 | tee ${path.join(
         forkHome,
