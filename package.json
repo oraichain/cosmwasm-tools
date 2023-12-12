@@ -1,6 +1,6 @@
 {
   "name": "@oraichain/cwtools",
-  "version": "0.0.66",
+  "version": "0.0.67",
   "license": "MIT",
   "main": "dist/index.js",
   "bin": "dist/index.js",
@@ -15,7 +15,7 @@
   "scripts": {
     "deploy": "yarn publish --access public . --patch",
     "start": "node dist",
-    "build": "esbuild src/index.ts  --bundle --minify --platform=node  --external:fsevents --log-level=error --outfile=dist/index.js"
+    "build": "esbuild src/index.ts  --bundle --minify --platform=node  --external:fsevents --external:shelljs --log-level=error --outfile=dist/index.js"
   },
   "engines": {
     "node": ">=16"
