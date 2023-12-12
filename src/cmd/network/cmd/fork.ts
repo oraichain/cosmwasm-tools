@@ -15,8 +15,7 @@ const genesisAmount = "1000000000000000";
 const walletName = "wallet";
 const bondedTokenPoolModuleName = "bonded_tokens_pool";
 const notBondedTokenPoolModuleName = "not_bonded_tokens_pool";
-const defaultSyncExportedGenesisCachePath =
-  "config/sync-genesis-state-cache.json";
+const defaultSyncExportedGenesisCacheName = "sync-genesis-state-cache.json";
 
 export interface GenesisCache {
   [stakingTokenDenom: string]: {
@@ -299,7 +298,7 @@ export default async (yargs: Argv) => {
     const appTomlPath = `${chainInfo.nodeHome}/config/app.toml`;
     const portsFlag = `--p2p.laddr tcp://0.0.0.0:${p2pPort} --grpc.address 0.0.0.0:${grpcPort} --rpc.laddr tcp://0.0.0.0:${rpcPort} --grpc-web.address 0.0.0.0:${grpcWebPort}`;
     // export our statesync genesis state if sync home is specified
-    let finalExportedSyncGenesisPath = exportedSyncGenesisPath;
+    let finalExportedSyncGenesisPath: string = exportedSyncGenesisPath;
     if (syncHome && !finalExportedSyncGenesisPath) {
       finalExportedSyncGenesisPath = exportGenesisState(
         chainInfo.daemonPath,
@@ -308,8 +307,11 @@ export default async (yargs: Argv) => {
       );
     }
     const syncGenesisCachePath = path.join(
-      forkHome,
-      defaultSyncExportedGenesisCachePath
+      finalExportedSyncGenesisPath.substring(
+        0,
+        finalExportedSyncGenesisPath.lastIndexOf("/")
+      ),
+      defaultSyncExportedGenesisCacheName
     );
     if (clearCache) shell.rm(syncGenesisCachePath);
     const syncGenesisReader = await GenesisReader.create(
