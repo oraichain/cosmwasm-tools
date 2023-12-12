@@ -360,7 +360,7 @@ export default async (yargs: Argv) => {
       }
     );
     await new Promise((resolve) => setTimeout(resolve, 15000));
-    execution.kill();
+    execution.kill("SIGINT");
 
     // export fork's genesis state so we can start extracting its consensus state
     const forkExportGenesisPath = exportGenesisState(
@@ -400,7 +400,7 @@ export default async (yargs: Argv) => {
     // TODO: add change admin of multisig to gain full control of the contracts (for Oraichain network only only)
     // const modifiedMultisigState = `.app_state.wasm.contracts[.app_state.wasm.contracts| map(.contract_address == "${groupAddress}") | index(true)].contract_state = [{"key":"00076D656D62657273${devSharedHexBytes}","value":"Mw=="},{"key":"746F74616C","value":"Mw=="},{"key":"61646D696E","value":"${adminMultiSigInBase64}"}]`;
 
-    const jq = `'.app_state.slashing = ${slashing} | .app_state.staking = ${staking} | .validators = ${validators} | .app_state.staking.params.unbonding_time = "10s" | .app_state.gov.voting_params.voting_period = "60s" | .app_state.gov.deposit_params.min_deposit[0].amount = "1" | .app_state.gov.tally_params.quorum = "0.000000000000000000" | .app_state.gov.tally_params.threshold = "0.000000000000000000" | .app_state.mint.params.inflation_min = "0.500000000000000000" | .app_state.bank.supply[${syncGenesisStateCache.totalSupplyIndex}].amount = "${syncGenesisStateCache.bank.totalBalances}" | .chain_id = "${chainId}-fork"'`;
+    const jq = `'.app_state.slashing = ${slashing} | .app_state.staking = ${staking} | .validators = ${validators} | .app_state.staking.params.unbonding_time = "10s" | .app_state.gov.voting_params.voting_period = "60s" | .app_state.gov.deposit_params.min_deposit[0].amount = "1" | .app_state.gov.tally_params.quorum = "0.000000000000000000" | .app_state.gov.tally_params.threshold = "0.000000000000000000" | .app_state.mint.params.inflation_min = "0.500000000000000000" | .app_state.bank.supply[${syncGenesisStateCacheStakingDenom.totalSupplyIndex}].amount = "${syncGenesisStateCacheStakingDenom.bank.totalBalances}" | .chain_id = "${chainId}-fork"'`;
 
     // apply all the changes to the sync genesis state so that we can start producing blocks with the sync state
     shell.exec(
