@@ -353,14 +353,12 @@ export default async (yargs: Argv) => {
 
     // start the fork for a couple blocks and stop it after a few blocks so we can export the fork's genesis state
     // the purpose is to replace the fork's staking & consensus states to the sync's states so we can produce new blocks with the sync's states
-    const execution = shell.exec(
-      `${daemon} start --x-crisis-skip-assert-invariants ${homeFlag} ${portsFlag}`,
+    shell.exec(
+      `${daemon} start --x-crisis-skip-assert-invariants ${homeFlag} ${portsFlag} --halt-height 3`,
       {
         async: true,
       }
     );
-    await new Promise((resolve) => setTimeout(resolve, 15000));
-    execution.kill("SIGINT");
 
     // export fork's genesis state so we can start extracting its consensus state
     const forkExportGenesisPath = exportGenesisState(
