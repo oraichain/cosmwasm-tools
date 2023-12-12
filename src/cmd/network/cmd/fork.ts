@@ -1,3 +1,4 @@
+//@ts-nocheck
 import { Argv } from "yargs";
 import shell from "shelljs";
 import { serializeError } from "serialize-error";
@@ -226,6 +227,31 @@ export default async (yargs: Argv) => {
       description:
         "If true, then the exported sync genesis state cache will be cleared, and the program will re-read the states from the original exported genesis file",
       default: false,
+    })
+    .option("rpc-port", {
+      type: "number",
+      description: "rpc port of the fork node",
+      default: 46657,
+    })
+    .option("grpc-port", {
+      type: "number",
+      description: "grpc port of the fork node",
+      default: 5090,
+    })
+    .option("p2p-port", {
+      type: "number",
+      description: "p2p port of the fork node",
+      default: 46656,
+    })
+    .option("rest-port", {
+      type: "number",
+      description: "rest port of the fork node",
+      default: 5317,
+    })
+    .option("grpc-web-port", {
+      type: "number",
+      description: "grpc web port",
+      default: 5091,
     });
 
   try {
@@ -233,8 +259,14 @@ export default async (yargs: Argv) => {
     const [chainName] = argv._.slice(-1);
     //@ts-ignore
     const { syncHome, exportedSyncGenesisPath, daemonPath, clearCache } = argv;
-    //@ts-ignore
-    const { forkHome: expectedForkHome } = argv;
+    const {
+      forkHome: expectedForkHome,
+      rpcPort,
+      grpcPort,
+      p2pPort,
+      restPort,
+      grpcWebPort,
+    } = argv;
     //@ts-ignore
     const mnemonic = argv.MNEMONIC;
     if (!expectedForkHome) {
@@ -264,6 +296,8 @@ export default async (yargs: Argv) => {
     const homeFlag = `--home ${forkHome}`;
     const keyringBackendFlag = `--keyring-backend test`;
     const homeAndKeyringFlags = `${homeFlag} ${keyringBackendFlag}`;
+    const appTomlPath = `${chainInfo.nodeHome}/config/app.toml`;
+    const portsFlag = `--p2p.laddr tcp://0.0.0.0:${p2pPort} --grpc.address 0.0.0.0:${grpcPort} --rpc.laddr tcp://0.0.0.0:${rpcPort} --grpc-web.address 0.0.0.0:${grpcWebPort}`;
     // export our statesync genesis state if sync home is specified
     let finalExportedSyncGenesisPath = exportedSyncGenesisPath;
     if (syncHome && !finalExportedSyncGenesisPath) {
@@ -283,10 +317,12 @@ export default async (yargs: Argv) => {
       stakingTokenDenom,
       syncGenesisCachePath
     );
-    const syncGenesisStateCache = (
-      await syncGenesisReader.withChainInfo(chainInfo).readGenesisData()
-    )[stakingTokenDenom];
+    const syncGenesisStateCache = await syncGenesisReader
+      .withChainInfo(chainInfo)
+      .readGenesisData();
     shell.echo(JSON.stringify(syncGenesisStateCache)).to(syncGenesisCachePath);
+    const syncGenesisStateCacheStakingDenom =
+      syncGenesisStateCache[stakingTokenDenom];
 
     // reset fork node to start over
     shell.rm("-r", forkHome);
@@ -300,16 +336,27 @@ export default async (yargs: Argv) => {
     );
     // we gentx with bonded token pool from sync node so that the bonded amount of the fork node matches the total bonding of the sync node
     shell.exec(
-      `${daemon} gentx ${walletName} ${syncGenesisStateCache[bondedTokenPoolModuleName]}${stakingTokenDenom} --chain-id ${chainId} ${homeAndKeyringFlags}`
+      `${daemon} gentx ${walletName} ${syncGenesisStateCacheStakingDenom[bondedTokenPoolModuleName]}${stakingTokenDenom} --chain-id ${chainId} ${homeAndKeyringFlags}`
     );
     shell.exec(`${daemon} collect-gentxs ${homeFlag}`);
     shell.exec(`${daemon} validate-genesis ${homeFlag}`);
 
+    // change ports based on user inputs to avoid overlapping with other existing nodes
+    shell.sed(
+      "-i",
+      /tcp:\/\/0\.0\.0\.0:1317/g,
+      `tcp://0.0.0.0:${restPort}`,
+      appTomlPath
+    );
+
     // start the fork for a couple blocks and stop it after a few blocks so we can export the fork's genesis state
     // the purpose is to replace the fork's staking & consensus states to the sync's states so we can produce new blocks with the sync's states
-    const execution = shell.exec(`${daemon} start ${homeFlag}`, {
-      async: true,
-    });
+    const execution = shell.exec(
+      `${daemon} start --x-crisis-skip-assert-invariants ${homeFlag} ${portsFlag}`,
+      {
+        async: true,
+      }
+    );
     await new Promise((resolve) => setTimeout(resolve, 15000));
     execution.kill();
 
@@ -336,10 +383,12 @@ export default async (yargs: Argv) => {
           forkGenesisState.app_state.staking.delegations[0].validator_address,
         entries: [
           {
-            balance: syncGenesisStateCache[notBondedTokenPoolModuleName],
+            balance:
+              syncGenesisStateCacheStakingDenom[notBondedTokenPoolModuleName],
             completion_time: nextYearDate.toISOString(),
             creation_height: "9305417",
-            initial_balance: syncGenesisStateCache[bondedTokenPoolModuleName],
+            initial_balance:
+              syncGenesisStateCacheStakingDenom[bondedTokenPoolModuleName],
           },
         ],
       },
@@ -364,15 +413,9 @@ export default async (yargs: Argv) => {
 
     // start the program without checking invariants (we dont need to). Remember that the first few blocks will take a very long time (about 30 mins) to produce
     // once done, then the node will start & produce blocks fast
-    shell.exec(`${daemon} start --x-crisis-skip-assert-invariants ${homeFlag}`);
-
-    // const wallet = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, {
-    //   hdPaths: [stringToPath(process.env.HD_PATH)],
-    //   prefix: chainInfo.bech32Prefix,
-    // });
-    // const [firstAccount] = await wallet.getAccounts();
-
-    // read statesync genesis file
+    shell.exec(
+      `${daemon} start --x-crisis-skip-assert-invariants ${homeFlag} ${portsFlag}`
+    );
   } catch (error) {
     console.log(error);
   }
