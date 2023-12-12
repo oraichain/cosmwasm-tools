@@ -72,7 +72,7 @@ export class GenesisReader {
     let genesis: any;
     let cache: boolean = false;
     // read from cache instead for faster access
-    if (genesisStateCachePath && shell.find(genesisStateCachePath).length > 0) {
+    if (genesisStateCachePath && fs.existsSync(genesisStateCachePath)) {
       genesis = await readLargeJsonFile(genesisStateCachePath);
       console.log("genesis caching: ", genesis);
       cache = true;
@@ -297,6 +297,10 @@ export default async (yargs: Argv) => {
     const homeAndKeyringFlags = `${homeFlag} ${keyringBackendFlag}`;
     const appTomlPath = `${chainInfo.nodeHome}/config/app.toml`;
     const portsFlag = `--p2p.laddr tcp://0.0.0.0:${p2pPort} --grpc.address 0.0.0.0:${grpcPort} --rpc.laddr tcp://0.0.0.0:${rpcPort} --grpc-web.address 0.0.0.0:${grpcWebPort}`;
+    // reset fork node to start over
+    shell.rm("-r", forkHome);
+    // init fork node
+    shell.exec(`${daemon} init ${MONIKER} --chain-id ${chainId} ${homeFlag}`);
     // export our statesync genesis state if sync home is specified
     let finalExportedSyncGenesisPath: string = exportedSyncGenesisPath;
     if (syncHome && !finalExportedSyncGenesisPath) {
@@ -326,10 +330,6 @@ export default async (yargs: Argv) => {
     const syncGenesisStateCacheStakingDenom =
       syncGenesisStateCache[stakingTokenDenom];
 
-    // reset fork node to start over
-    shell.rm("-r", forkHome);
-    // init fork node
-    shell.exec(`${daemon} init ${MONIKER} --chain-id ${chainId} ${homeFlag}`);
     shell.exec(
       `echo ${mnemonic} | ${daemon} keys add ${walletName} --recover ${homeAndKeyringFlags}`
     );

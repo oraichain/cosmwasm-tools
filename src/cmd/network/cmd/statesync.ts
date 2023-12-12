@@ -218,7 +218,6 @@ export class ChainInfo {
     const chainInfo = new ChainInfo(chainName, nodeHome);
     await chainInfo.parseChainInfo(additionalP2ps, additionalRpcs);
     await chainInfo.getDaemonPath(preferredDaemonPath);
-    await chainInfo.overrideGenesisFile();
     this.instance = chainInfo;
     return chainInfo;
   }
@@ -493,6 +492,7 @@ export default async (yargs: Argv) => {
       rpcs,
       preferredDaemonPath
     );
+    await chainInfo.overrideGenesisFile();
     const { daemonPath: daemon, nodeHome: newNodeHome, chainId } = chainInfo;
     // clear the directory before init
     if (clear) {
