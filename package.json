@@ -1,6 +1,6 @@
 {
   "name": "@oraichain/cwtools",
-  "version": "0.0.64",
+  "version": "0.0.65",
   "license": "MIT",
   "main": "dist/index.js",
   "bin": "dist/index.js",
