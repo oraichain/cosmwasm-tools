@@ -8,6 +8,7 @@ import path from "path";
 import { ChainInfo, MONIKER } from "./statesync";
 import fs from "fs";
 import json from "big-json";
+import { bech32 } from "bech32";
 
 const defaultExportGenesisPath = "config/export-genesis.json";
 const completedForkGenesisPath = "config/genesis.json";
@@ -52,6 +53,17 @@ const readLargeJsonFile = async (genesisPath: string): Promise<any> => {
 
     readStream.pipe(parseStream);
   });
+};
+
+const decodeAddress = (address: string) => {
+  const decoded = bech32.decode(address);
+  const decodedBytes = Buffer.from(bech32.fromWords(decoded.words));
+  return {
+    decodedBytes: decodedBytes.toString("hex").toUpperCase(),
+    decodedBase64: Buffer.from(`"${decodedBytes.toString("base64")}"`).toString(
+      "base64"
+    ),
+  };
 };
 
 export class GenesisReader {
@@ -392,10 +404,19 @@ export default async (yargs: Argv) => {
     ];
     const staking = JSON.stringify(forkGenesisState.app_state.staking);
     const validators = JSON.stringify(forkGenesisState.validators);
-    // TODO: add change admin of multisig to gain full control of the contracts (for Oraichain network only only)
-    // const modifiedMultisigState = `.app_state.wasm.contracts[.app_state.wasm.contracts| map(.contract_address == "${groupAddress}") | index(true)].contract_state = [{"key":"00076D656D62657273${devSharedHexBytes}","value":"Mw=="},{"key":"746F74616C","value":"Mw=="},{"key":"61646D696E","value":"${adminMultiSigInBase64}"}]`;
 
-    const jq = `'.app_state.slashing = ${slashing} | .app_state.staking = ${staking} | .validators = ${validators} | .app_state.staking.params.unbonding_time = "1209600s" | .app_state.gov.voting_params.voting_period = "60s" | .app_state.gov.deposit_params.min_deposit[0].amount = "1" | .app_state.gov.tally_params.quorum = "0.000000000000000000" | .app_state.gov.tally_params.threshold = "0.000000000000000000" | .app_state.mint.params.inflation_min = "0.500000000000000000" | .app_state.bank.supply[${syncGenesisStateCacheStakingDenom.totalSupplyIndex}].amount = "${syncGenesisStateCacheStakingDenom.bank.totalBalances}" | .chain_id = "${chainId}-fork"'`;
+    // change multisig admin to our wallet
+    const wallet = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, {
+      hdPaths: [stringToPath(process.env.HD_PATH)],
+      prefix: chainInfo.bech32Prefix,
+    });
+    const [firstAccount] = await wallet.getAccounts();
+    const { decodedBytes, decodedBase64 } = decodeAddress(firstAccount.address);
+    // TODO: remove hardcode group address & multisig in general
+    const groupAddress = "orai18s0fxs2f3jhxxe7pkezh8dzd5pm44qt4ht5pv5";
+    const modifiedMultisigState = `.app_state.wasm.contracts[.app_state.wasm.contracts| map(.contract_address == "${groupAddress}") | index(true)].contract_state = [{"key":"00076D656D62657273${decodedBytes}","value":"Mw=="},{"key":"746F74616C","value":"Mw=="},{"key":"61646D696E","value":"${decodedBase64}"}]`;
+
+    const jq = `'.app_state.slashing = ${slashing} | .app_state.staking = ${staking} | .validators = ${validators} | .app_state.staking.params.unbonding_time = "1209600s" | .app_state.gov.voting_params.voting_period = "60s" | .app_state.gov.deposit_params.min_deposit[0].amount = "1" | .app_state.gov.tally_params.quorum = "0.000000000000000000" | .app_state.gov.tally_params.threshold = "0.000000000000000000" | .app_state.mint.params.inflation_min = "0.500000000000000000" | .app_state.bank.supply[${syncGenesisStateCacheStakingDenom.totalSupplyIndex}].amount = "${syncGenesisStateCacheStakingDenom.bank.totalBalances}" | .chain_id = "${chainId}-fork" | ${modifiedMultisigState}'`;
 
     // apply all the changes to the sync genesis state so that we can start producing blocks with the sync state
     shell.exec(
