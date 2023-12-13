@@ -10,5 +10,9 @@ export default (yargs: Argv) => {
       "Run a state sync of a cosmos-based network",
       statesyncCmd
     )
-    .command("fork", "Fork a cosmos-based network", forkCmd);
+    .command(
+      "fork",
+      "Fork a cosmos-based network. Before running: need .env file for MNEMONIC env var, jq for parsing json, shelljs npm installed globally ",
+      forkCmd
+    );
 };
