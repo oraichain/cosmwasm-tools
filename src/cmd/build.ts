@@ -15,7 +15,7 @@ const buildContract = async (packageName: string, contractDir: string, debug: bo
   const buildName = packageName.replaceAll('-', '_');
   const artifactDir = join(contractDir, 'artifacts');
   const outputDir = resolve(output || artifactDir);
-  const wasmFile = join(outputDir, buildName + '.wasm');
+  const wasmFile = join(outputDir, packageName + '.wasm');
   console.log(`Building contract in ${outputDir}`);
   // Linker flag "-s" for stripping (https://github.com/rust-lang/cargo/issues/3483#issuecomment-431209957)
   // Note that shortcuts from .cargo/config are not available in source code packages from crates.io
