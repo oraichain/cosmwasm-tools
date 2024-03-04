@@ -55,7 +55,15 @@ yargs(hideBin(process.argv))
     // @ts-ignore
     const scriptFile = path.resolve(argv._[1]);
     const parsed = ts.transpile(fs.readFileSync(scriptFile).toString());
-    eval(parsed)(argv, common);
+    // also pass exports
+    eval(parsed)(argv, common, {
+      bech32: require('bech32'),
+      '@cosmjs/stargate': require('@cosmjs/stargate'),
+      '@cosmjs/cosmwasm-stargate': require('@cosmjs/cosmwasm-stargate'),
+      '@cosmjs/crypto': require('@cosmjs/crypto'),
+      '@cosmjs/math': require('@cosmjs/math'),
+      '@cosmjs/proto-signing': require('@cosmjs/proto-signing')
+    });
   })
   .command('network', 'Cosmos-based network related commands', networkCmd)
   .option('help', {
