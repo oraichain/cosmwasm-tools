@@ -1,6 +1,6 @@
 {
   "name": "@oraichain/cwtools",
-  "version": "0.0.79",
+  "version": "0.0.80",
   "license": "MIT",
   "main": "dist/index.js",
   "bin": "dist/index.js",
@@ -29,7 +29,7 @@
     "@cosmjs/math": "^0.31.1",
     "@cosmjs/proto-signing": "^0.31.1",
     "@cosmjs/stargate": "^0.31.1",
-    "@oraichain/ts-codegen": "^0.35.8",
+    "@oraichain/ts-codegen": "^0.35.9",
     "@types/gunzip-maybe": "^1.4.1",
     "@types/readline-sync": "^1.4.4",
     "@types/shelljs": "^0.8.15",
