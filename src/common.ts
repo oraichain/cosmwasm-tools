@@ -77,7 +77,8 @@ export const buildSchema = async (packageName: string, contractDir: string, targ
 export const filterContractDirs = (packages: string[]) => {
   // filter contract folder only
   return packages
-    .map((contractDir) => {
+    .map((dir) => {
+      const contractDir = resolve(dir);
       // name is extract from Cargo.toml
       const cargoPath = join(contractDir, 'Cargo.toml');
 

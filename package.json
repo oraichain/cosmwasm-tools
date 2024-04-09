@@ -1,6 +1,6 @@
 {
   "name": "@oraichain/cwtools",
-  "version": "0.0.76",
+  "version": "0.0.80",
   "license": "MIT",
   "main": "dist/index.js",
   "bin": "dist/index.js",
@@ -20,13 +20,16 @@
   "engines": {
     "node": ">=16"
   },
+  "dependencies": {
+    "shelljs": "^0.8.5"
+  },
   "devDependencies": {
     "@cosmjs/cosmwasm-stargate": "^0.31.1",
     "@cosmjs/crypto": "^0.31.1",
     "@cosmjs/math": "^0.31.1",
     "@cosmjs/proto-signing": "^0.31.1",
     "@cosmjs/stargate": "^0.31.1",
-    "@oraichain/ts-codegen": "^0.35.8",
+    "@oraichain/ts-codegen": "^0.35.9",
     "@types/gunzip-maybe": "^1.4.1",
     "@types/readline-sync": "^1.4.4",
     "@types/shelljs": "^0.8.15",
@@ -41,7 +44,6 @@
     "nodejs-file-downloader": "^4.12.1",
     "readline-sync": "^1.4.10",
     "serialize-error": "^11.0.3",
-    "shelljs": "^0.8.5",
     "tar-fs": "^3.0.4",
     "toml": "^3.0.0",
     "typescript": "^5.0.3",

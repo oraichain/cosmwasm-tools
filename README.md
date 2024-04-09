@@ -26,9 +26,34 @@ Options:
 
 Cosmwasm commands with encrypted mnemonic
 
+Custom script: `scripts/show_account.ts`
+
+```ts
+export default async (argv, common, exports) => {
+  const { stringToPath } = exports['@cosmjs/crypto'];
+  const { GasPrice } = exports['@cosmjs/stargate'];
+  const { SigningCosmWasmClient } = exports['@cosmjs/cosmwasm-stargate'];
+  const { DirectSecp256k1HdWallet } = exports['@cosmjs/proto-signing'];
+
+  const prefix = process.env.PREFIX || 'orai';
+  const mnemonic = argv.ENCRYPTED_MNEMONIC ? common.decryptMnemonic(argv.ENCRYPTED_MNEMONIC) : argv.MNEMONIC;
+  const wallet = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, {
+    hdPaths: [stringToPath(process.env.HD_PATH)],
+    prefix
+  });
+  const [firstAccount] = await wallet.getAccounts();
+
+  const client = await SigningCosmWasmClient.connectWithSigner(process.env.RPC_URL, wallet, {
+    gasPrice: GasPrice.fromString(`${process.env.GAS_PRICES}${prefix}`)
+  });
+
+  console.log(firstAccount);
+};
+```
+
 ```bash
 # generate encrypted mnemonic
-cwtools script scripts/encrypt_mnemonic.ts [mnemonic_file]
+cwtools script scripts/show_account.ts
 
 # then put it into .env file then run
 cwtools wasm -h
