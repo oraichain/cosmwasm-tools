@@ -11,7 +11,7 @@ const {
   promises: { mkdir, rm, stat }
 } = fs;
 
-const buildContract = async (packageName: string, contractDir: string, debug: boolean, output: string, targetDir: string, optimizeArgs: string[]) => {
+const buildContract = async (packageName: string, contractDir: string, debug: boolean, output: string, targetDir: string, optimizeArgs: string[], cargoArgs: string[], RUSTFLAGS = []) => {
   const buildName = packageName.replaceAll('-', '_');
   const artifactDir = join(contractDir, 'artifacts');
   const outputDir = resolve(output || artifactDir);
@@ -25,18 +25,20 @@ const buildContract = async (packageName: string, contractDir: string, debug: bo
   // rm old file to clear cache when displaying size
   await rm(wasmFile, { force: true });
   const options = {
-    RUSTFLAGS: '-C link-arg=-s',
+    RUSTFLAGS: [...new Set(['-C', 'link-arg=-s'].concat(RUSTFLAGS))].join(' '),
     CARGO_INCREMENTAL: process.env.RUSTC_WRAPPER === 'sccache' ? '0' : '1'
   };
 
   const wasmOptPath = await getWasmOpt();
 
+  const cargoCmd = RUSTFLAGS.some((arg) => arg.startsWith('-Zlocation-detail')) ? ['+nightly'] : [];
+
   if (debug) {
-    await spawnPromise('cargo', ['build', '-q', '--lib', '--target-dir', targetDir, '--target', 'wasm32-unknown-unknown'], contractDir, options);
+    await spawnPromise('cargo', [...cargoCmd, 'build', ...cargoArgs, '-q', '--lib', '--target-dir', targetDir, '--target', 'wasm32-unknown-unknown'], contractDir, options);
     console.log(`Optimizing ${wasmFile}`);
     await spawnPromise(wasmOptPath, ['-O1', '--signext-lowering', join(targetDir, 'wasm32-unknown-unknown', 'debug', buildName + '.wasm'), '-o', wasmFile], contractDir);
   } else {
-    await spawnPromise('cargo', ['build', '-q', '--release', '--lib', '--target-dir', targetDir, '--target', 'wasm32-unknown-unknown'], contractDir, options);
+    await spawnPromise('cargo', [...cargoCmd, 'build', ...cargoArgs, '-q', '--release', '--lib', '--target-dir', targetDir, '--target', 'wasm32-unknown-unknown'], contractDir, options);
     console.log(`Optimizing ${wasmFile}`);
     await spawnPromise(wasmOptPath, [...optimizeArgs, '--signext-lowering', join(targetDir, 'wasm32-unknown-unknown', 'release', buildName + '.wasm'), '-o', wasmFile], contractDir);
   }
@@ -57,7 +59,7 @@ const buildContract = async (packageName: string, contractDir: string, debug: bo
  * @param watchContract
  * @param output
  */
-const buildContracts = async (packages: string[], debug: boolean, schema: boolean, watchMode: boolean, output: string, optimizeArgs: string[]) => {
+const buildContracts = async (packages: string[], debug: boolean, schema: boolean, watchMode: boolean, output: string, optimizeArgs: string[], cargoArgs: string[], RUSTFLAGS: string[]) => {
   const cargoDir = join(os.homedir(), '.cargo');
   const targetDir = join(cargoDir, 'target');
 
@@ -88,7 +90,7 @@ const buildContracts = async (packages: string[], debug: boolean, schema: boolea
   // run build all frist
   await Promise.all(
     contractDirRet.map(async ([contractDir, packageName]) => {
-      return await buildContract(packageName, contractDir, debug, outputDir, targetDir, optimizeArgs);
+      return await buildContract(packageName, contractDir, debug, outputDir, targetDir, optimizeArgs, cargoArgs, RUSTFLAGS);
     })
   );
 
@@ -106,7 +108,7 @@ const buildContracts = async (packages: string[], debug: boolean, schema: boolea
       if (running[contractDir]) return;
       running[contractDir] = true;
       const start = Date.now();
-      await buildContract(packageName, contractDir, debug, outputDir, targetDir, optimizeArgs);
+      await buildContract(packageName, contractDir, debug, outputDir, targetDir, optimizeArgs, cargoArgs, RUSTFLAGS);
       running[contractDir] = false;
       console.log('✨ all done in', Date.now() - start, 'ms!');
     });
@@ -148,10 +150,15 @@ export default async (yargs: Argv) => {
       type: 'string',
       description: 'Pass args to `wasm-opt`',
       default: '-Os --low-memory-unused'
+    })
+    .option('cargo', {
+      type: 'string',
+      description: 'Pass args to `cargo`',
+      default: ''
     });
 
   const start = Date.now();
   // @ts-ignore
-  await buildContracts(argv._.slice(1), argv.debug, argv.schema, argv.watch, argv.output, argv.optimize.split(/\s+/));
+  await buildContracts(argv._.slice(1), argv.debug, argv.schema, argv.watch, argv.output, argv.optimize.split(/\s+/), argv.cargo.split(/\s+/), argv.RUSTFLAGS?.split(/\s+/));
   console.log('✨ all done in', Date.now() - start, 'ms!');
 };
