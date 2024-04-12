@@ -30,8 +30,8 @@ const buildContract = async (packageName: string, contractDir: string, debug: bo
   };
 
   const wasmOptPath = await getWasmOpt();
-
-  const cargoCmd = RUSTFLAGS.some((arg) => arg.startsWith('-Zlocation-detail')) ? ['+nightly'] : [];
+  // -Z is for nightly build
+  const cargoCmd = RUSTFLAGS.some((arg) => arg.startsWith('-Z')) || cargoArgs.some((arg) => arg.startsWith('-Z')) ? ['+nightly'] : [];
 
   if (debug) {
     await spawnPromise('cargo', [...cargoCmd, 'build', ...cargoArgs, '-q', '--lib', '--target-dir', targetDir, '--target', 'wasm32-unknown-unknown'], contractDir, options);
