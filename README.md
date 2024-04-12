@@ -58,3 +58,8 @@ cwtools script scripts/show_account.ts
 # then put it into .env file then run
 cwtools wasm -h
 ```
+
+# Experimental build
+
+Turn on all optimization params to save size  
+`cwtools build contract --cargo='-Z build-std=std,panic_abort -Z build-std-features=panic_immediate_abort' --RUSTFLAGS=-Zlocation-detail=none`
