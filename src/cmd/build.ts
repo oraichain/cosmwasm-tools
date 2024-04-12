@@ -3,7 +3,7 @@ import { watch } from 'chokidar';
 import * as fs from 'fs';
 import os from 'os';
 import { basename, join, resolve } from 'path';
-import { Argv } from 'yargs';
+import { Argv, boolean } from 'yargs';
 import { buildSchema, getWasmOpt, filterContractDirs, spawnPromise } from '../common';
 
 const {
@@ -159,6 +159,6 @@ export default async (yargs: Argv) => {
 
   const start = Date.now();
   // @ts-ignore
-  await buildContracts(argv._.slice(1), argv.debug, argv.schema, argv.watch, argv.output, argv.optimize.split(/\s+/), argv.cargo.split(/\s+/), argv.RUSTFLAGS?.split(/\s+/));
+  await buildContracts(argv._.slice(1), argv.debug, argv.schema, argv.watch, argv.output, argv.optimize.split(/\s+/).filter(Boolean), argv.cargo.split(/\s+/).filter(Boolean), argv.RUSTFLAGS?.split(/\s+/).filter(Boolean));
   console.log('✨ all done in', Date.now() - start, 'ms!');
 };
