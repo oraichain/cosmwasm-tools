@@ -19,12 +19,10 @@ export const parseNodeHomeWithEnvVariable = (nodeHome: string): string => {
   // Check if a match is found
   if (match && match[1]) {
     const envVariableName = match[1];
+    const envPath = process.env[envVariableName] ?? process.env["HOME"];
 
     // Replace $CUSTOM_VAR with the value of the specified environment variable
-    const replacedPath = nodeHome.replace(
-      envVariableRegex,
-      process.env[envVariableName]
-    );
+    const replacedPath = nodeHome.replace(envVariableRegex, envPath);
 
     // Use path.resolve to handle any relative paths or additional slashes
     const resolvedPath = path.resolve(replacedPath);

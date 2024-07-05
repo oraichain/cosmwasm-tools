@@ -5,7 +5,7 @@
         "resolveJsonModule": true,
         "skipLibCheck": true,
         "useDefineForClassFields": false,
-        "moduleResolution": "node",
+        "moduleResolution": "NodeNext",
         "isolatedModules": true,
         "esModuleInterop": true,
         "target": "esnext"

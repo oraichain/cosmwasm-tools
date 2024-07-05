@@ -195,12 +195,28 @@ export class GenesisReader {
       );
     const totalSupplyIndex = await this.readTotalSupplyIndexWithCache();
 
+    let contractsLength = 0;
+    let sequences = [];
+    if (!this.cache) {
+      const { contracts, sequences: seqs } =
+        this.genesisStateData.app_state.wasm;
+      contractsLength = contracts.length;
+      sequences = seqs;
+    } else {
+      contractsLength = this.genesisStateData.wasm.contracts_length;
+      sequences = this.genesisStateData.wasm.sequences;
+    }
+
     const syncGenesisStateCache: GenesisCache = {
       [this.stakingTokenDenom]: {
         bank: { totalBalances },
         [bondedTokenPoolModuleName]: bondedTokenPoolAmount,
         [notBondedTokenPoolModuleName]: totalUnbondingDelegations,
         totalSupplyIndex,
+      },
+      wasm: {
+        contracts_length: contractsLength,
+        sequences,
       },
     };
     return syncGenesisStateCache;
@@ -405,6 +421,12 @@ export default async (yargs: Argv) => {
     const staking = JSON.stringify(forkGenesisState.app_state.staking);
     const validators = JSON.stringify(forkGenesisState.validators);
 
+    // fix cosmwasm sequences
+    console.log("sync cache genesis state: ", syncGenesisStateCache)
+    let { contracts_length, sequences } = syncGenesisStateCache.wasm;
+    // plus 1 to make sure the last sequence is higher than the total contract length
+    sequences[sequences.length - 1].value = (contracts_length + 1).toString();
+
     // change multisig admin to our wallet
     const wallet = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, {
       hdPaths: [stringToPath(process.env.HD_PATH)],
@@ -416,7 +438,7 @@ export default async (yargs: Argv) => {
     const groupAddress = "orai18s0fxs2f3jhxxe7pkezh8dzd5pm44qt4ht5pv5";
     const modifiedMultisigState = `.app_state.wasm.contracts[.app_state.wasm.contracts| map(.contract_address == "${groupAddress}") | index(true)].contract_state = [{"key":"00076D656D62657273${decodedBytes}","value":"Mw=="},{"key":"746F74616C","value":"Mw=="},{"key":"61646D696E","value":"${decodedBase64}"}]`;
 
-    const jq = `'.app_state.slashing = ${slashing} | .app_state.staking = ${staking} | .validators = ${validators} | .app_state.staking.params.unbonding_time = "1209600s" | .app_state.gov.voting_params.voting_period = "60s" | .app_state.gov.deposit_params.min_deposit[0].amount = "1" | .app_state.gov.tally_params.quorum = "0.000000000000000000" | .app_state.gov.tally_params.threshold = "0.000000000000000000" | .app_state.mint.params.inflation_min = "0.500000000000000000" | .app_state.bank.supply[${syncGenesisStateCacheStakingDenom.totalSupplyIndex}].amount = "${syncGenesisStateCacheStakingDenom.bank.totalBalances}" | .chain_id = "${chainId}-fork" | ${modifiedMultisigState}'`;
+    const jq = `'.app_state.slashing = ${slashing} | .app_state.staking = ${staking} | .validators = ${validators} | .app_state.staking.params.unbonding_time = "1209600s" | .app_state.gov.voting_params.voting_period = "60s" | .app_state.gov.deposit_params.min_deposit[0].amount = "1" | .app_state.gov.tally_params.quorum = "0.000000000000000000" | .app_state.gov.tally_params.threshold = "0.000000000000000000" | .app_state.mint.params.inflation_min = "0.500000000000000000" | .app_state.bank.supply[${syncGenesisStateCacheStakingDenom.totalSupplyIndex}].amount = "${syncGenesisStateCacheStakingDenom.bank.totalBalances}" | .chain_id = "${chainId}-fork" | ${modifiedMultisigState} | .app_state.wasm.sequences = ${JSON.stringify(sequences)}'`;
 
     // apply all the changes to the sync genesis state so that we can start producing blocks with the sync state
     shell.exec(
@@ -439,4 +461,4 @@ export default async (yargs: Argv) => {
   }
 };
 
-// eg: yarn start network fork oraichain --fork-home ~/.oraid-fork --exported-sync-genesis-path ~/.oraid-sync/config/export-genesis.json
+// eg: NODE_OPTIONS="--max-old-space-size=32000" yarn start network fork oraichain --fork-home ~/.oraid-fork --exported-sync-genesis-path ~/.oraid-sync/config/export-genesis.json
