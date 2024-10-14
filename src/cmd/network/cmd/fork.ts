@@ -320,6 +320,7 @@ export default async (yargs: Argv) => {
       chainId,
       stakingTokenDenom,
     } = chainInfo;
+    const forkChainId = `${chainId}-fork`;
     const homeFlag = `--home ${forkHome}`;
     const keyringBackendFlag = `--keyring-backend test`;
     const homeAndKeyringFlags = `${homeFlag} ${keyringBackendFlag}`;
@@ -328,7 +329,9 @@ export default async (yargs: Argv) => {
     // reset fork node to start over
     shell.rm("-r", forkHome);
     // init fork node
-    shell.exec(`${daemon} init ${MONIKER} --chain-id ${chainId} ${homeFlag}`);
+    shell.exec(
+      `${daemon} init ${MONIKER} --chain-id ${forkChainId} ${homeFlag}`
+    );
     // export our statesync genesis state if sync home is specified
     let finalExportedSyncGenesisPath: string = exportedSyncGenesisPath;
     if (syncHome && !finalExportedSyncGenesisPath) {
@@ -366,7 +369,7 @@ export default async (yargs: Argv) => {
     );
     // we gentx with bonded token pool from sync node so that the bonded amount of the fork node matches the total bonding of the sync node
     shell.exec(
-      `${daemon} gentx ${walletName} ${syncGenesisStateCacheStakingDenom[bondedTokenPoolModuleName]}${stakingTokenDenom} --chain-id ${chainId} ${homeAndKeyringFlags}`
+      `${daemon} gentx ${walletName} ${syncGenesisStateCacheStakingDenom[bondedTokenPoolModuleName]}${stakingTokenDenom} --chain-id ${forkChainId} ${homeAndKeyringFlags}`
     );
     shell.exec(`${daemon} collect-gentxs ${homeFlag}`);
     shell.exec(`${daemon} validate-genesis ${homeFlag}`);
@@ -382,7 +385,7 @@ export default async (yargs: Argv) => {
     // start the fork for a couple blocks and stop it after a few blocks so we can export the fork's genesis state
     // the purpose is to replace the fork's staking & consensus states to the sync's states so we can produce new blocks with the sync's states
     shell.exec(
-      `${daemon} start --x-crisis-skip-assert-invariants ${homeFlag} ${portsFlag} --halt-height 3`
+      `${daemon} start --x-crisis-skip-assert-invariants ${homeFlag} ${portsFlag} --halt-height 3 --chain-id ${forkChainId}`
     );
 
     // export fork's genesis state so we can start extracting its consensus state
@@ -422,7 +425,7 @@ export default async (yargs: Argv) => {
     const validators = JSON.stringify(forkGenesisState.validators);
 
     // fix cosmwasm sequences
-    console.log("sync cache genesis state: ", syncGenesisStateCache)
+    console.log("sync cache genesis state: ", syncGenesisStateCache);
     let { contracts_length, sequences } = syncGenesisStateCache.wasm;
     // plus 1 to make sure the last sequence is higher than the total contract length
     sequences[sequences.length - 1].value = (contracts_length + 1).toString();
@@ -438,7 +441,13 @@ export default async (yargs: Argv) => {
     const groupAddress = "orai18s0fxs2f3jhxxe7pkezh8dzd5pm44qt4ht5pv5";
     const modifiedMultisigState = `.app_state.wasm.contracts[.app_state.wasm.contracts| map(.contract_address == "${groupAddress}") | index(true)].contract_state = [{"key":"00076D656D62657273${decodedBytes}","value":"Mw=="},{"key":"746F74616C","value":"Mw=="},{"key":"61646D696E","value":"${decodedBase64}"}]`;
 
-    const jq = `'.app_state.slashing = ${slashing} | .app_state.staking = ${staking} | .validators = ${validators} | .app_state.staking.params.unbonding_time = "1209600s" | .app_state.gov.voting_params.voting_period = "60s" | .app_state.gov.deposit_params.min_deposit[0].amount = "1" | .app_state.gov.tally_params.quorum = "0.000000000000000000" | .app_state.gov.tally_params.threshold = "0.000000000000000000" | .app_state.mint.params.inflation_min = "0.500000000000000000" | .app_state.bank.supply[${syncGenesisStateCacheStakingDenom.totalSupplyIndex}].amount = "${syncGenesisStateCacheStakingDenom.bank.totalBalances}" | .chain_id = "${chainId}-fork" | ${modifiedMultisigState} | .app_state.wasm.sequences = ${JSON.stringify(sequences)}'`;
+    const jq = `'.app_state.slashing = ${slashing} | .app_state.staking = ${staking} | .validators = ${validators} | .app_state.staking.params.unbonding_time = "1209600s" | .app_state.gov.voting_params.voting_period = "60s" | .app_state.gov.deposit_params.min_deposit[0].amount = "1" | .app_state.gov.tally_params.quorum = "0.000000000000000000" | .app_state.gov.tally_params.threshold = "0.000000000000000000" | .app_state.mint.params.inflation_min = "0.500000000000000000" | .app_state.bank.supply[${
+      syncGenesisStateCacheStakingDenom.totalSupplyIndex
+    }].amount = "${
+      syncGenesisStateCacheStakingDenom.bank.totalBalances
+    }" | .chain_id = "${forkChainId}" | ${modifiedMultisigState} | .app_state.wasm.sequences = ${JSON.stringify(
+      sequences
+    )}'`;
 
     // apply all the changes to the sync genesis state so that we can start producing blocks with the sync state
     shell.exec(
@@ -453,9 +462,9 @@ export default async (yargs: Argv) => {
 
     // start the program without checking invariants (we dont need to). Remember that the first few blocks will take a very long time (about 30 mins) to produce
     // once done, then the node will start & produce blocks fast
-    shell.exec(
-      `${daemon} start --x-crisis-skip-assert-invariants ${homeFlag} ${portsFlag}`
-    );
+    // preparation done. Please run the following command:
+    const startCommand = `Preparation done. Please run the following command to start forking: ${daemon} start --x-crisis-skip-assert-invariants ${homeFlag} ${portsFlag} --chain-id ${forkChainId}`;
+    shell.exec(`echo ${startCommand}`);
   } catch (error) {
     console.log(error);
   }
