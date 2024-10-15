@@ -463,7 +463,7 @@ export default async (yargs: Argv) => {
     // start the program without checking invariants (we dont need to). Remember that the first few blocks will take a very long time (about 30 mins) to produce
     // once done, then the node will start & produce blocks fast
     // preparation done. Please run the following command:
-    const startCommand = `Preparation done. Please run the following command to start forking: ${daemon} start --x-crisis-skip-assert-invariants ${homeFlag} ${portsFlag} --chain-id ${forkChainId}`;
+    const startCommand = `Preparation done. Please run the following command to start forking: GOGC=20 ${daemon} start --x-crisis-skip-assert-invariants ${homeFlag} ${portsFlag} --chain-id ${forkChainId}`;
     shell.exec(`echo ${startCommand}`);
   } catch (error) {
     console.log(error);
