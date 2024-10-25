@@ -30,7 +30,7 @@ export const upload = async (argv) => {
     // console.log('argv fees: ', argv);
     let res = await client.upload(
       firstAccount.address,
-      wasmBody,
+      Uint8Array.from(wasmBody),
       "auto",
       argv.memo
     );
@@ -58,3 +58,5 @@ export default async (yargs: Argv) => {
 
   await upload(argv);
 };
+
+// tsx src/index.ts wasm upload ../oraiswap/contracts/oraiswap_rewarder/artifacts/oraiswap-rewarder.wasm --env ../cosmwasm-tools/.env
