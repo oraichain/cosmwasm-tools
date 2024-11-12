@@ -336,7 +336,7 @@ export class NodeConfigurator {
       throw "Empty RPC URL list. Cannot start the statesync process";
     }
     // double the rpc servers so we can bypass the statesync error: at least two rpc_servers entries is required
-    return rpcUrls.concat(rpcUrls);
+    return [...rpcUrls, ...rpcUrls];
   }
 
   async configureNodeForStateSync(trustHeightRange: number) {
@@ -388,6 +388,12 @@ export class NodeConfigurator {
       `persistent_peers = "${p2pNodes.join(",")}"`,
       configTomlPath
     );
+    shell.sed(
+      "-i",
+      /^seeds\s*=\s*.*/m,
+      `seeds = "${p2pNodes.join(",")}"`,
+      configTomlPath
+    );
     // set maximum outbound peers to 0 because we dont want the p2p logs to be too verbose.
     // We only connect to working nodes on chain registry & custom peers from args
     shell.sed(
@@ -414,6 +420,27 @@ export class NodeConfigurator {
       "-i",
       /^trust_hash\s*=\s*.*/m,
       `trust_hash = "${trustHash}"`,
+      configTomlPath
+    );
+
+    shell.sed(
+      "-i",
+      /^discovery_time\s*=\s*.*/m,
+      `discovery_time = "60s"`,
+      configTomlPath
+    );
+
+    shell.sed(
+      "-i",
+      /^chunk_request_timeout\s*=\s*.*/m,
+      `chunk_request_timeout = "60s"`,
+      configTomlPath
+    );
+
+    shell.sed(
+      "-i",
+      /^chunk_fetchers\s*=\s*.*/m,
+      `chunk_fetchers = "10"`,
       configTomlPath
     );
   }
